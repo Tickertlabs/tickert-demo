@@ -2,7 +2,6 @@ module tickert::event;
 
 use std::string::{Self, String};
 use sui::clock::{Self, Clock};
-use sui::tx_context::{Self, TxContext};
 
 //=================================================================
 // Constants

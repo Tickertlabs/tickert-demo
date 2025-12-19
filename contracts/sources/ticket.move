@@ -2,7 +2,6 @@ module tickert::ticket;
 
 use std::string::{Self, String};
 use sui::clock::{Self, Clock};
-use sui::transfer;
 use tickert::event::{Self, Event};
 
 //=================================================================
