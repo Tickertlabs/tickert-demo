@@ -1,0 +1,102 @@
+/**
+ * Event creation page for organizers
+ */
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { Container, Heading, Card } from '@radix-ui/themes';
+import { EventForm } from '../../components/event/EventForm';
+import { uploadEventMetadata, generateICSFile } from '../../lib/walrus/storage';
+import {
+  buildCreateEventTransaction,
+  getClockObjectId,
+} from '../../lib/sui/transactions';
+export function CreateEventPage() {
+  const navigate = useNavigate();
+  const client = useSuiClient();
+  const { signAndExecuteTransactionBlock, currentAccount } = useWallet();
+  const network = 'testnet'; // TODO: Get from wallet context
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (data: any) => {
+    if (!currentAccount) {
+      alert('Please connect your wallet');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. Prepare metadata
+      const startTime = new Date(data.startTime);
+      const endTime = new Date(data.endTime);
+
+      const metadata = {
+        title: data.title,
+        description: data.description,
+        location: {
+          name: data.locationName,
+          address: data.locationAddress,
+        },
+        category: data.category,
+        agenda: [],
+        speakers: [],
+        announcements: [],
+        ics_calendar: generateICSFile({
+          title: data.title,
+          description: data.description,
+          startTime,
+          endTime,
+          location: data.locationAddress,
+        }),
+      };
+
+      // 2. Upload metadata to Walrus
+      const metadataUrl = await uploadEventMetadata(metadata);
+
+      // 3. Build transaction
+      const clockId = getClockObjectId(network);
+      const txb = buildCreateEventTransaction(
+        {
+          metadataUrl,
+          capacity: data.capacity,
+          price: Math.floor(data.price * 1_000_000_000), // Convert SUI to MIST
+          startTime: Math.floor(startTime.getTime()),
+          endTime: Math.floor(endTime.getTime()),
+          requiresApproval: data.requiresApproval,
+          isPublic: data.isPublic,
+        },
+        clockId
+      );
+
+      // 4. Sign and execute
+      const result = await signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+      });
+
+      console.log('Event created:', result);
+
+      // 5. Navigate to event detail
+      // Note: We need to extract the event object ID from the transaction result
+      navigate('/organizer/events');
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert('Failed to create event. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Container size="4" py="5">
+      <Heading size="8" mb="5">
+        Create New Event
+      </Heading>
+      <Card>
+        <EventForm onSubmit={handleSubmit} isLoading={isLoading} />
+      </Card>
+    </Container>
+  );
+}
+

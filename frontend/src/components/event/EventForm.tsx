@@ -1,0 +1,194 @@
+/**
+ * Event creation/editing form component
+ */
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button, TextField, TextArea, Select, Checkbox, Flex, Box, Text } from '@radix-ui/themes';
+
+const eventSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().min(1, 'Description is required'),
+  category: z.string().min(1, 'Category is required'),
+  locationName: z.string().min(1, 'Location name is required'),
+  locationAddress: z.string().min(1, 'Location address is required'),
+  startTime: z.string().min(1, 'Start time is required'),
+  endTime: z.string().min(1, 'End time is required'),
+  capacity: z.number().min(1, 'Capacity must be at least 1'),
+  price: z.number().min(0, 'Price must be 0 or greater'),
+  requiresApproval: z.boolean(),
+  isPublic: z.boolean(),
+});
+
+type EventFormData = z.infer<typeof eventSchema>;
+
+interface EventFormProps {
+  onSubmit: (data: EventFormData) => Promise<void>;
+  isLoading?: boolean;
+}
+
+export function EventForm({ onSubmit, isLoading }: EventFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EventFormData>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      requiresApproval: false,
+      isPublic: true,
+    },
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Flex direction="column" gap="4">
+        <Box>
+          <TextField.Root
+            placeholder="Event Title"
+            {...register('title')}
+            size="3"
+          />
+          {errors.title && (
+            <Text size="1" color="red" mt="1">
+              {errors.title.message}
+            </Text>
+          )}
+        </Box>
+
+        <Box>
+          <TextArea
+            placeholder="Event Description"
+            {...register('description')}
+            rows={5}
+          />
+          {errors.description && (
+            <Text size="1" color="red" mt="1">
+              {errors.description.message}
+            </Text>
+          )}
+        </Box>
+
+        <Flex gap="4">
+          <Box style={{ flex: 1 }}>
+            <Select.Root {...register('category')}>
+              <Select.Trigger placeholder="Category" />
+              <Select.Content>
+                <Select.Item value="technology">Technology</Select.Item>
+                <Select.Item value="business">Business</Select.Item>
+                <Select.Item value="arts">Arts</Select.Item>
+                <Select.Item value="sports">Sports</Select.Item>
+                <Select.Item value="other">Other</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </Box>
+
+          <Box style={{ flex: 1 }}>
+            <TextField.Root
+              type="number"
+              placeholder="Capacity"
+              {...register('capacity', { valueAsNumber: true })}
+            />
+            {errors.capacity && (
+              <Text size="1" color="red" mt="1">
+                {errors.capacity.message}
+              </Text>
+            )}
+          </Box>
+
+          <Box style={{ flex: 1 }}>
+            <TextField.Root
+              type="number"
+              step="0.001"
+              placeholder="Price (SUI)"
+              {...register('price', { valueAsNumber: true })}
+            />
+            {errors.price && (
+              <Text size="1" color="red" mt="1">
+                {errors.price.message}
+              </Text>
+            )}
+          </Box>
+        </Flex>
+
+        <Box>
+          <TextField.Root
+            placeholder="Location Name"
+            {...register('locationName')}
+          />
+          {errors.locationName && (
+            <Text size="1" color="red" mt="1">
+              {errors.locationName.message}
+            </Text>
+          )}
+        </Box>
+
+        <Box>
+          <TextField.Root
+            placeholder="Location Address"
+            {...register('locationAddress')}
+          />
+          {errors.locationAddress && (
+            <Text size="1" color="red" mt="1">
+              {errors.locationAddress.message}
+            </Text>
+          )}
+        </Box>
+
+        <Flex gap="4">
+          <Box style={{ flex: 1 }}>
+            <TextField.Root
+              type="datetime-local"
+              placeholder="Start Time"
+              {...register('startTime')}
+            />
+            {errors.startTime && (
+              <Text size="1" color="red" mt="1">
+                {errors.startTime.message}
+              </Text>
+            )}
+          </Box>
+
+          <Box style={{ flex: 1 }}>
+            <TextField.Root
+              type="datetime-local"
+              placeholder="End Time"
+              {...register('endTime')}
+            />
+            {errors.endTime && (
+              <Text size="1" color="red" mt="1">
+                {errors.endTime.message}
+              </Text>
+            )}
+          </Box>
+        </Flex>
+
+        <Flex gap="4">
+          <Box>
+            <label>
+              <Flex gap="2" align="center">
+                <Checkbox {...register('requiresApproval')} />
+                <Text size="2">Requires Approval</Text>
+              </Flex>
+            </label>
+          </Box>
+
+          <Box>
+            <label>
+              <Flex gap="2" align="center">
+                <Checkbox {...register('isPublic')} />
+                <Text size="2">Public Listing</Text>
+              </Flex>
+            </label>
+          </Box>
+        </Flex>
+
+        <Button type="submit" size="3" disabled={isLoading}>
+          {isLoading ? 'Creating...' : 'Create Event'}
+        </Button>
+      </Flex>
+    </form>
+  );
+}
+

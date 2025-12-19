@@ -1,0 +1,18 @@
+[package]
+name = "tickert"
+version = "0.1.0"
+edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+
+
+[addresses]
+tickert = "0x0"
+
+[dependencies]
+#Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[dev-dependencies]
+#Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[dev-addresses]
+# tickert = "0x0"
+
