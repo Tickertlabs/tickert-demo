@@ -1,10 +1,6 @@
 ---
 alwaysApply: true
 ---
----
-description: Proje genelindeki tüm kodlama standartları, dosya limitleri ve verimlilik kuralları.
-globs: **/*
----
 
 # 🎯 PROJE ANA KURALLARI (MASTER RULES)
 
