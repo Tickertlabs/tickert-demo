@@ -1,0 +1,56 @@
+---
+alwaysApply: true
+---
+---
+description: Proje genelindeki tüm kodlama standartları, dosya limitleri ve verimlilik kuralları.
+globs: **/*
+---
+
+# 🎯 PROJE ANA KURALLARI (MASTER RULES)
+
+## ⚡ 1. DOSYA YAPISI VE SINIRLAR (KRİTİK)
+- **Maksimum Satır Sayısı:** Tek bir dosya kesinlikle **250-300 satırı** geçmemelidir. Bu sınırı aşan dosyalar mantıklı parçalara bölünerek refactor edilmelidir.
+- **Tek Sorumluluk Prensibi (SRP):** Her dosya veya bileşen yalnızca tek bir işten sorumlu olmalıdır.
+- **Bileşen Bölme:** Bir React/Next.js bileşeni çok karmaşıklaşırsa, alt bileşenleri (sub-components) aynı klasörde ayrı dosyalara taşı.
+- **Logic Ayrımı:** Karmaşık hesaplamaları ve API çağrılarını bileşenin içinden çıkarıp `hooks` veya `utils` klasörlerine taşı.
+- **Import Yönetimi:** Kullanılmayan importları temizle ve importları şu sırayla kategorize et: 1. Kütüphaneler, 2. Bileşenler, 3. Tipler/Interface'ler.
+
+## 🛠️ 2. KODLAMA STANDARTLARI
+- **Dil:** Varsayılan dil TypeScript'tir.
+- **Stil:** Fonksiyonel programlama yaklaşımını tercih et ve Arrow Functions kullan.
+- **İsimlendirme:** - Değişkenler: `camelCase`
+  - Bileşenler: `PascalCase`
+  - Sabitler: `UPPER_SNAKE_CASE`
+- **Hata Yönetimi:** Tüm operasyonlarda `try-catch` bloklarını kullan ve anlamlı hata mesajları üret.
+- **Genel Prensipler:** - Her zaman en güncel ve stabil kütüphaneleri kullan.
+  - "Don't Repeat Yourself" (DRY) prensibine kesinlikle sadık kal.
+  - Gereksiz açıklamalardan kaçın; kodun kendisi temiz ve okunabilir olmalıdır.
+
+## 🏗️ 3. PROJE YAPISI VE ARAÇLAR
+- **Dizin Düzeni:** Bileşenleri `src/components`, iş mantığını (Business Logic) `src/hooks` veya `src/services` altında topla.
+- **UI/Styling:** Tailwind CSS kullanılıyorsa, utility class'ları mantıklı bir sırayla yaz.
+- **Form/Validation:** Form yönetimi için `react-hook-form`, doğrulama için `zod` kullan (varsa).
+
+## 💬 4. İLETİŞİM VE ÇALIŞMA BİÇİMİ
+- **Soru Sor:** Çözüm sunmadan önce gerekirse veya net olmayan bir durum varsa soru sor.
+- **Tam Kod Bloğu:** Kod bloklarını her zaman tam olarak ver; parçalı kod verme, kopyalaması kolay olsun.
+- **Planlama:** Eğer büyük bir refactor yapacaksan, işleme başlamadan önce planını madde madde açıkla ve onay al.
+- **Analiz:** Bir değişiklik yapmadan önce mevcut dosya yapısını ve kod akışını analiz et.
+
+## 🚀 5. PERFORMANS, GÜVENLİK VE REFACTOR
+- **Performans:** Gereksiz render'lardan kaçın (`useMemo`, `useCallback` kullanımı).
+- **Güvenlik:** API anahtarlarını veya hassas verileri asla koda gömme, `.env` dosyası kullan.
+- **Refactor Talimatı:** Eğer mevcut bir dosya üzerinde çalışırken dosya çok büyürse, bana sormadan önce "Bunu nasıl parçalara ayırabiliriz?" şeklinde somut bir öneri sun.
+
+## 📝 6. COMMIT MESAJI STANDARTLARI
+- **Format:** Commit mesajları `tip(kapsam): mesaj` formatında olmalıdır. (Örn: `feat(auth): login ekranı eklendi` veya `fix(api): veri çekme hatası düzeltildi`)
+- **Tipler:**
+  - `feat`: Yeni bir özellik.
+  - `fix`: Bir hatanın düzeltilmesi.
+  - `docs`: Sadece dokümantasyon değişikliği.
+  - `style`: Kodun çalışmasını etkilemeyen değişiklikler (boşluklar, formatlama).
+  - `refactor`: Ne hata düzelten ne de özellik ekleyen kod değişikliği.
+  - `perf`: Performansı artıran değişiklik.
+  - `chore`: Build süreci veya yardımcı araçlardaki değişiklikler.
+- **Dil:** İngilizce mesajlar kısa, öz ve şimdiki zaman kipiyle yazılmalıdır.
+- **Otomatik Commit:** Eğer benden commit mesajı istersen, yukarıdaki formatı kullanarak en az 3 farklı alternatif sun.
