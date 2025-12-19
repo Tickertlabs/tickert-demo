@@ -25,7 +25,7 @@ export async function getZkLoginAddress(): Promise<string | null> {
  * Sign transaction with ZkLogin
  */
 export async function signWithZkLogin(
-  transaction: any
+  _transaction: any
 ): Promise<any> {
   // TODO: Implement ZkLogin transaction signing
   throw new Error('ZkLogin not yet implemented');

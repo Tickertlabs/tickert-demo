@@ -3,17 +3,13 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useSuiClient } from '@mysten/dapp-kit';
 import { Container, Heading, Box } from '@radix-ui/themes';
 import { EventList } from '../../components/event/EventList';
-import { queryOwnedEvents } from '../../lib/sui/queries';
-import { getEventMetadata } from '../../lib/walrus/storage';
 import { Event, EventMetadata } from '../../types';
 
 export function EventsPage() {
-  const client = useSuiClient();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [metadataMap, setMetadataMap] = useState<Map<string, EventMetadata>>(
+  const [events] = useState<Event[]>([]);
+  const [metadataMap] = useState<Map<string, EventMetadata>>(
     new Map()
   );
   const [loading, setLoading] = useState(true);
@@ -32,7 +28,7 @@ export function EventsPage() {
     }
 
     loadEvents();
-  }, [client]);
+  }, []);
 
   if (loading) {
     return (

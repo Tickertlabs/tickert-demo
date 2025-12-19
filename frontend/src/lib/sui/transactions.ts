@@ -2,7 +2,7 @@
  * Transaction building and signing helpers
  */
 
-import { TransactionBlock } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import { PACKAGE_ID } from './contracts';
 
 export interface EventParams {
@@ -26,8 +26,8 @@ export interface TicketParams {
 export function buildCreateEventTransaction(
   params: EventParams,
   clockId: string
-): TransactionBlock {
-  const txb = new TransactionBlock();
+): Transaction {
+  const txb = new Transaction();
 
   txb.moveCall({
     target: `${PACKAGE_ID}::event::create_event`,
@@ -53,8 +53,8 @@ export function buildMintTicketTransaction(
   params: TicketParams,
   eventId: string,
   clockId: string
-): TransactionBlock {
-  const txb = new TransactionBlock();
+): Transaction {
+  const txb = new Transaction();
 
   txb.moveCall({
     target: `${PACKAGE_ID}::ticket::mint_ticket`,
@@ -74,8 +74,8 @@ export function buildMintTicketTransaction(
 export function buildMarkAttendanceTransaction(
   ticketId: string,
   clockId: string
-): TransactionBlock {
-  const txb = new TransactionBlock();
+): Transaction {
+  const txb = new Transaction();
 
   txb.moveCall({
     target: `${PACKAGE_ID}::attendance::mint_attendance`,
@@ -91,7 +91,7 @@ export function buildMarkAttendanceTransaction(
 /**
  * Get clock object ID (shared clock on Sui)
  */
-export function getClockObjectId(network: string): string {
+export function getClockObjectId(): string {
   // Clock object ID is the same across all networks
   return '0x6';
 }

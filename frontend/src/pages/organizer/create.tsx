@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Container, Heading, Card } from '@radix-ui/themes';
 import { EventForm } from '../../components/event/EventForm';
 import { uploadEventMetadata, generateICSFile } from '../../lib/walrus/storage';
@@ -14,9 +14,8 @@ import {
 } from '../../lib/sui/transactions';
 export function CreateEventPage() {
   const navigate = useNavigate();
-  const client = useSuiClient();
-  const { signAndExecuteTransactionBlock, currentAccount } = useWallet();
-  const network = 'testnet'; // TODO: Get from wallet context
+  const currentAccount = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (data: any) => {
@@ -56,7 +55,7 @@ export function CreateEventPage() {
       const metadataUrl = await uploadEventMetadata(metadata);
 
       // 3. Build transaction
-      const clockId = getClockObjectId(network);
+      const clockId = getClockObjectId();
       const txb = buildCreateEventTransaction(
         {
           metadataUrl,
@@ -71,19 +70,26 @@ export function CreateEventPage() {
       );
 
       // 4. Sign and execute
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-      });
-
-      console.log('Event created:', result);
-
-      // 5. Navigate to event detail
-      // Note: We need to extract the event object ID from the transaction result
-      navigate('/organizer/events');
+      signAndExecuteTransaction(
+        {
+          transaction: txb,
+        },
+        {
+          onSuccess: (result) => {
+            console.log('Event created:', result);
+            navigate('/organizer/events');
+            setIsLoading(false);
+          },
+          onError: (error) => {
+            console.error('Error creating event:', error);
+            alert('Failed to create event. Please try again.');
+            setIsLoading(false);
+          },
+        }
+      );
     } catch (error) {
       console.error('Error creating event:', error);
       alert('Failed to create event. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };

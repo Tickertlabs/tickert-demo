@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Container, Heading, Text, Box, Card, Flex } from '@radix-ui/themes';
 import { queryEvent } from '../../lib/sui/queries';
 import { getEventMetadata } from '../../lib/walrus/storage';
@@ -20,8 +20,8 @@ export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const client = useSuiClient();
-  const { signAndExecuteTransactionBlock, currentAccount } = useWallet();
-  const network = 'testnet'; // TODO: Get from wallet context
+  const currentAccount = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [event, setEvent] = useState<Event | null>(null);
   const [metadata, setMetadata] = useState<EventMetadata | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export function EventDetailPage() {
       const encryptedMetadataUrl = encryptedMetadata; // Placeholder
 
       // 5. Build mint ticket transaction
-      const clockId = getClockObjectId(network);
+      const clockId = getClockObjectId();
       const txb = buildMintTicketTransaction(
         {
           eventId: id,
@@ -87,23 +87,27 @@ export function EventDetailPage() {
       );
 
       // 6. Sign and execute transaction
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
+      signAndExecuteTransaction(
+        {
+          transaction: txb,
         },
-      });
-
-      console.log('Ticket minted:', result);
-
-      // 7. Navigate to tickets page or show success message
-      alert('Ticket purchased successfully!');
-      navigate('/tickets');
+        {
+          onSuccess: (result) => {
+            console.log('Ticket minted:', result);
+            alert('Ticket purchased successfully!');
+            navigate('/tickets');
+            setRegistering(false);
+          },
+          onError: (error: any) => {
+            console.error('Error registering:', error);
+            alert(`Failed to register: ${error.message || 'Unknown error'}`);
+            setRegistering(false);
+          },
+        }
+      );
     } catch (error: any) {
-      console.error('Error registering:', error);
+      console.error('Error in handleRegister:', error);
       alert(`Failed to register: ${error.message || 'Unknown error'}`);
-    } finally {
       setRegistering(false);
     }
   };

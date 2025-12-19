@@ -4,7 +4,6 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
-import { TransactionBlock } from '@mysten/sui/transactions';
 
 export const PACKAGE_ID = import.meta.env.VITE_PACKAGE_ID || '0x8e5005145e6c16c8820ace59c30ccb8cd3d00ba328622fed02738182758c0d16';
 
@@ -115,7 +114,7 @@ export async function getOwnedEvents(
  * Note: This is a simplified version. In production, use an indexer for better performance.
  */
 export async function getPublicEvents(
-  client: SuiClient
+  _client: SuiClient
 ): Promise<any[]> {
   // This would typically use an indexer service
   // For now, this is a placeholder that would need to be implemented

@@ -3,7 +3,7 @@
  */
 
 import { Button } from '@radix-ui/themes';
-import { useWallet } from '@mysten/dapp-kit';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 
 interface RegisterButtonProps {
   eventId: string;
@@ -14,13 +14,13 @@ interface RegisterButtonProps {
 }
 
 export function RegisterButton({
-  eventId,
   price,
   onRegister,
   isLoading,
   disabled,
 }: RegisterButtonProps) {
-  const { isConnected } = useWallet();
+  const account = useCurrentAccount();
+  const isConnected = !!account;
   const priceInSui = Number(price) / 1_000_000_000;
 
   if (!isConnected) {

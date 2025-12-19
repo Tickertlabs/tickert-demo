@@ -21,11 +21,11 @@ class WalrusClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    _options: RequestInit = {}
   ): Promise<T> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(_options.headers as Record<string, string>),
     };
 
     if (this.apiKey) {
@@ -33,7 +33,7 @@ class WalrusClient {
     }
 
     const response = await fetch(`${this.apiUrl}${endpoint}`, {
-      ...options,
+      ..._options,
       headers,
     });
 

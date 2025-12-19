@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
 import { Container, Heading, Box, Grid } from '@radix-ui/themes';
 import { TicketCard } from '../../components/ticket/TicketCard';
 import { queryOwnedTickets } from '../../lib/sui/queries';
@@ -11,7 +11,7 @@ import { Ticket } from '../../types';
 
 export function TicketsPage() {
   const client = useSuiClient();
-  const { currentAccount } = useWallet();
+  const currentAccount = useCurrentAccount();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 

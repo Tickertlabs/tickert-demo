@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
 import { Container, Heading, Button, Box } from '@radix-ui/themes';
 import { EventList } from '../../components/event/EventList';
 import { queryOwnedEvents } from '../../lib/sui/queries';
@@ -14,7 +14,7 @@ import { Event, EventMetadata } from '../../types';
 export function OrganizerEventsPage() {
   const navigate = useNavigate();
   const client = useSuiClient();
-  const { currentAccount } = useWallet();
+  const currentAccount = useCurrentAccount();
   const [events, setEvents] = useState<Event[]>([]);
   const [metadataMap, setMetadataMap] = useState<Map<string, EventMetadata>>(
     new Map()

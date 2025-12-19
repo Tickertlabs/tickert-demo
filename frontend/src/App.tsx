@@ -3,7 +3,7 @@
  */
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Box, Container } from '@radix-ui/themes';
+import { Box } from '@radix-ui/themes';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { EventsPage } from './pages/events/index';

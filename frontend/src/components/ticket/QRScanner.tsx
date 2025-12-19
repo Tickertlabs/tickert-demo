@@ -8,11 +8,9 @@ import { Box, Button, Text } from '@radix-ui/themes';
 
 interface QRScannerProps {
   onScan: (ticketId: string) => void;
-  onError?: (error: Error) => void;
 }
 
-export function QRScanner({ onScan, onError }: QRScannerProps) {
-  const [scanning, setScanning] = useState(false);
+export function QRScanner({ onScan }: QRScannerProps) {
   const [manualInput, setManualInput] = useState('');
 
   const handleManualSubmit = () => {

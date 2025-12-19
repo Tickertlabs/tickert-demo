@@ -4,16 +4,15 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
 import { Container, Heading, Text, Box, Card, Flex, Button } from '@radix-ui/themes';
-import { queryEvent } from '../../lib/sui/queries';
-import { getEventMetadata } from '../../lib/walrus/storage';
-import { Event, EventMetadata } from '../../types';
+import { queryEvent } from '../../../lib/sui/queries.js';
+import { getEventMetadata } from '../../../lib/walrus/storage.js';
+import { Event, EventMetadata } from '../../../types/index.js';
 
 export function OrganizerEventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const client = useSuiClient();
-  const { currentAccount } = useWallet();
   const [event, setEvent] = useState<Event | null>(null);
   const [metadata, setMetadata] = useState<EventMetadata | null>(null);
   const [loading, setLoading] = useState(true);

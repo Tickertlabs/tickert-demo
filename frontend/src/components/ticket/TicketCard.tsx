@@ -2,7 +2,7 @@
  * Ticket card component for displaying ticket preview
  */
 
-import { Card, Heading, Text, Box, Flex } from '@radix-ui/themes';
+import { Card, Heading, Text, Flex } from '@radix-ui/themes';
 import { Link } from 'react-router-dom';
 import { Ticket } from '../../types';
 

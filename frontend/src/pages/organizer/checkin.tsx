@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Container, Heading, Card, Box, Text } from '@radix-ui/themes';
 import { QRScanner } from '../../components/ticket/QRScanner';
 import { queryTicket } from '../../lib/sui/queries';
@@ -14,8 +14,7 @@ import {
 
 export function CheckInPage() {
   const client = useSuiClient();
-  const { signAndExecuteTransactionBlock } = useWallet();
-  const network = 'testnet'; // TODO: Get from wallet context
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [verifying, setVerifying] = useState(false);
   const [lastVerified, setLastVerified] = useState<string | null>(null);
 
@@ -35,25 +34,31 @@ export function CheckInPage() {
       }
 
       // 2. Build mark attendance transaction
-      const clockId = getClockObjectId(network);
+      const clockId = getClockObjectId();
       const txb = buildMarkAttendanceTransaction(ticketId, clockId);
 
       // 3. Sign and execute transaction
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
+      signAndExecuteTransaction(
+        {
+          transaction: txb,
         },
-      });
-
-      console.log('Attendance verified:', result);
-      setLastVerified(ticketId);
-      alert('Attendance verified successfully!');
+        {
+          onSuccess: (result) => {
+            console.log('Attendance verified:', result);
+            setLastVerified(ticketId);
+            alert('Attendance verified successfully!');
+            setVerifying(false);
+          },
+          onError: (error: any) => {
+            console.error('Error verifying attendance:', error);
+            alert(`Failed to verify attendance: ${error.message || 'Unknown error'}`);
+            setVerifying(false);
+          },
+        }
+      );
     } catch (error: any) {
       console.error('Error verifying attendance:', error);
       alert(`Failed to verify attendance: ${error.message || 'Unknown error'}`);
-    } finally {
       setVerifying(false);
     }
   };

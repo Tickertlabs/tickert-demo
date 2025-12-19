@@ -4,19 +4,18 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useSuiClient, useWallet } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
 import { Container, Heading, Text, Box, Card, Flex, Button } from '@radix-ui/themes';
 import { queryTicket } from '../../lib/sui/queries';
-import { decryptTicketMetadata } from '../../lib/seal/encryption';
 import { QRCode } from '../../components/ticket/QRCode';
 import { Ticket, TicketMetadata } from '../../types';
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const client = useSuiClient();
-  const { currentAccount } = useWallet();
+  const currentAccount = useCurrentAccount();
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [metadata, setMetadata] = useState<TicketMetadata | null>(null);
+  const [metadata] = useState<TicketMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [decrypting, setDecrypting] = useState(false);
 
@@ -116,7 +115,7 @@ export function TicketDetailPage() {
         {isOwner && (
           <Box mb="5">
             <QRCode value={ticket.id} />
-            <Text size="2" color="gray" style={{ textAlign: 'center', display: 'block', mt: '1rem' }}>
+            <Text size="2" color="gray" style={{ textAlign: 'center', display: 'block', marginTop: '1rem' }}>
               Show this QR code at the event for entry
             </Text>
           </Box>
