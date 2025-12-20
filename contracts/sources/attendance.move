@@ -1,50 +1,51 @@
 module tickert::attendance;
 
+// === Imports ===
+
 use sui::clock::{Self, Clock};
 use tickert::ticket::{Self, Ticket};
 
-//=================================================================
-// Constants
-//=================================================================
+// === Constants ===
 
 // Error codes
-const E_TICKET_NOT_VALID: u64 = 0;
-const E_ALREADY_ATTENDED: u64 = 1;
-const E_NOT_TICKET_OWNER: u64 = 2;
+const ETicketNotValid: u64 = 0;
+const ENotTicketOwner: u64 = 2;
 
-//=================================================================
-// Module Structs
-//=================================================================
+// === Structs ===
 
-/// Attendance NFT struct (soulbound - non-transferable)
+/// Attendance NFT struct representing proof of attendance at an event
+/// Soulbound - non-transferable after minting
 public struct Attendance has key, store {
     id: UID,
+    // ID of the event attended
     event_id: ID,
+    // Address of the attendee
     attendee: address,
+    // Timestamp when attendance was verified
     timestamp: u64,
+    // Whether the attendance was verified
     verified: bool,
 }
 
-//=================================================================
-// Public Functions
-//=================================================================
+// === Public Functions ===
 
-/// Create attendance NFT after verifying ticket
-public entry fun mint_attendance(
-    ticket: &mut Ticket,
-    clock: &Clock,
-    ctx: &mut TxContext,
+/// Mints an attendance NFT after verifying ticket ownership and validity
+/// Marks the ticket as used and transfers the attendance NFT to the attendee
+public fun mint_attendance(
+    ticket: &mut Ticket, // Ticket to verify
+    clock: &Clock, // Clock object for timestamp
+    ctx: &mut TxContext, // Transaction context
 ) {
-    let attendee_address = tx_context::sender(ctx);
+    let attendee_address = ctx.sender();
 
     // Validate ticket ownership and status
-    assert!(ticket::get_holder(ticket) == attendee_address, E_NOT_TICKET_OWNER);
-    assert!(ticket::is_valid(ticket), E_TICKET_NOT_VALID);
+    assert!(ticket::holder(ticket) == attendee_address, ENotTicketOwner);
+    assert!(ticket::is_valid(ticket), ETicketNotValid);
 
     // Mark ticket as used
     ticket::mark_as_used(ticket, attendee_address);
 
-    let event_id = ticket::get_event_id(ticket);
+    let event_id = ticket::event_id(ticket);
     let timestamp = clock::timestamp_ms(clock);
 
     let attendance = Attendance {
@@ -59,32 +60,32 @@ public entry fun mint_attendance(
     transfer::public_transfer(attendance, attendee_address);
 }
 
-//=================================================================
-// View Functions
-//=================================================================
+// === View Functions ===
 
-/// Get attendance details
-public fun get_event_id(attendance: &Attendance): ID {
+/// Returns the event ID for this attendance record
+public fun event_id(attendance: &Attendance): ID {
     attendance.event_id
 }
 
-public fun get_attendee(attendance: &Attendance): address {
+/// Returns the attendee address
+public fun attendee(attendance: &Attendance): address {
     attendance.attendee
 }
 
-public fun get_timestamp(attendance: &Attendance): u64 {
+/// Returns the timestamp when attendance was verified
+public fun timestamp(attendance: &Attendance): u64 {
     attendance.timestamp
 }
 
+/// Checks if the attendance was verified
 public fun is_verified(attendance: &Attendance): bool {
     attendance.verified
 }
 
-//=================================================================
-// Test Functions
-//=================================================================
+// === Test Functions ===
 
 #[test_only]
+/// Creates a test attendance NFT for unit testing
 public fun create_test_attendance(
     event_id: ID,
     attendee: address,

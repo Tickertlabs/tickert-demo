@@ -36,10 +36,10 @@ fun test_mint_ticket() {
             test_scenario::ctx(&mut scenario)
         );
 
-        assert!(ticket::get_holder(&ticket) == attendee, 0);
-        assert!(ticket::get_event_id(&ticket) == event_id, 1);
-        assert!(ticket::is_valid(&ticket), 2);
-        assert!(ticket::get_status(&ticket) == 0, 3); // TICKET_STATUS_VALID = 0
+        assert!(ticket::holder(&ticket) == attendee);
+        assert!(ticket::event_id(&ticket) == event_id);
+        assert!(ticket::is_valid(&ticket));
+        assert!(ticket::status(&ticket) == 0); // TICKET_STATUS_VALID = 0
         transfer::public_transfer(ticket, attendee);
     };
 
@@ -62,10 +62,10 @@ fun test_mark_ticket_as_used() {
             test_scenario::ctx(&mut scenario)
         );
 
-        assert!(ticket::is_valid(&ticket), 0);
+        assert!(ticket::is_valid(&ticket));
         ticket::mark_as_used(&mut ticket, attendee);
-        assert!(ticket::get_status(&ticket) == 1, 1); // TICKET_STATUS_USED = 1
-        assert!(!ticket::is_valid(&ticket), 2);
+        assert!(ticket::status(&ticket) == 1); // TICKET_STATUS_USED = 1
+        assert!(!ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
     };
 
@@ -88,10 +88,10 @@ fun test_cancel_ticket() {
             test_scenario::ctx(&mut scenario)
         );
 
-        assert!(ticket::is_valid(&ticket), 0);
+        assert!(ticket::is_valid(&ticket));
         ticket::cancel_ticket(&mut ticket, attendee);
-        assert!(ticket::get_status(&ticket) == 2, 1); // TICKET_STATUS_CANCELLED = 2
-        assert!(!ticket::is_valid(&ticket), 2);
+        assert!(ticket::status(&ticket) == 2); // TICKET_STATUS_CANCELLED = 2
+        assert!(!ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
     };
 
@@ -99,7 +99,7 @@ fun test_cancel_ticket() {
 }
 
 #[test]
-#[expected_failure(abort_code = tickert::ticket::E_NOT_TICKET_OWNER)]
+#[expected_failure(abort_code = tickert::ticket::ENotTicketOwner)]
 fun test_mark_as_used_wrong_owner() {
     let mut scenario = test_scenario::begin(@0x2);
     let attendee = @0x2;
@@ -124,7 +124,7 @@ fun test_mark_as_used_wrong_owner() {
 }
 
 #[test]
-#[expected_failure(abort_code = tickert::ticket::E_TICKET_ALREADY_USED)]
+#[expected_failure(abort_code = tickert::ticket::ETicketAlreadyUsed)]
 fun test_mark_as_used_already_used() {
     let mut scenario = test_scenario::begin(@0x2);
     let attendee = @0x2;

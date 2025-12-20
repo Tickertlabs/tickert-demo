@@ -22,7 +22,7 @@ fun test_mint_attendance() {
         );
 
         // Verify ticket is valid before attendance
-        assert!(ticket::is_valid(&ticket), 0);
+        assert!(ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
         
         // Create attendance NFT
@@ -33,9 +33,9 @@ fun test_mint_attendance() {
             test_scenario::ctx(&mut scenario)
         );
 
-        assert!(attendance::get_attendee(&attendance) == attendee, 1);
-        assert!(attendance::get_event_id(&attendance) == event_id, 2);
-        assert!(attendance::is_verified(&attendance), 3);
+        assert!(attendance::attendee(&attendance) == attendee);
+        assert!(attendance::event_id(&attendance) == event_id);
+        assert!(attendance::is_verified(&attendance));
         transfer::public_transfer(attendance, attendee);
     };
 
@@ -60,7 +60,7 @@ fun test_attendance_after_ticket_used() {
 
         // Mark ticket as used first
         ticket::mark_as_used(&mut ticket, attendee);
-        assert!(!ticket::is_valid(&ticket), 0);
+        assert!(!ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
         
         // Create attendance NFT
@@ -71,8 +71,8 @@ fun test_attendance_after_ticket_used() {
             test_scenario::ctx(&mut scenario)
         );
 
-        assert!(attendance::get_attendee(&attendance) == attendee, 1);
-        assert!(attendance::is_verified(&attendance), 2);
+        assert!(attendance::attendee(&attendance) == attendee);
+        assert!(attendance::is_verified(&attendance));
         transfer::public_transfer(attendance, attendee);
     };
 
@@ -95,7 +95,7 @@ fun test_attendance_timestamp() {
             test_scenario::ctx(&mut scenario)
         );
 
-        assert!(attendance::get_timestamp(&attendance) == timestamp, 0);
+        assert!(attendance::timestamp(&attendance) == timestamp);
         transfer::public_transfer(attendance, attendee);
     };
 

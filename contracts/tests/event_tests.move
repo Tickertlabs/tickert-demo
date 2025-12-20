@@ -30,12 +30,12 @@ fun test_create_event() {
             test_scenario::ctx(&mut scenario)
         );
         
-        assert!(event::get_organizer(&event) == organizer, 0);
-        assert!(event::get_capacity(&event) == capacity, 1);
-        assert!(event::get_price(&event) == price, 2);
-        assert!(event::is_active(&event), 3);
-        assert!(event::is_public(&event), 4);
-        assert!(event::get_sold(&event) == 0, 5);
+        assert!(event::organizer(&event) == organizer);
+        assert!(event::capacity(&event) == capacity);
+        assert!(event::price(&event) == price);
+        assert!(event::is_active(&event));
+        assert!(event::is_public(&event));
+        assert!(event::sold(&event) == 0);
         transfer::public_transfer(event, organizer);
     };
 
@@ -69,7 +69,7 @@ fun test_create_event_invalid_capacity() {
             test_scenario::ctx(&mut scenario)
         );
         // Verify it was created with capacity 0
-        assert!(event::get_capacity(&event) == 0, 0);
+        assert!(event::capacity(&event) == 0);
         transfer::public_transfer(event, organizer);
     };
 
@@ -102,7 +102,7 @@ fun test_update_event_status() {
             2, // STATUS_CANCELLED
             test_scenario::ctx(&mut scenario)
         );
-        assert!(event::get_status(&event) == 2, 0); // STATUS_CANCELLED
+        assert!(event::status(&event) == 2); // STATUS_CANCELLED
         transfer::public_transfer(event, organizer);
     };
 
@@ -127,11 +127,11 @@ fun test_increment_sold() {
     );
 
     {
-        assert!(event::get_sold(&event) == 0, 0);
+        assert!(event::sold(&event) == 0);
         event::increment_sold(&mut event);
-        assert!(event::get_sold(&event) == 1, 1);
+        assert!(event::sold(&event) == 1);
         event::increment_sold(&mut event);
-        assert!(event::get_sold(&event) == 2, 2);
+        assert!(event::sold(&event) == 2);
         transfer::public_transfer(event, organizer);
     };
 
