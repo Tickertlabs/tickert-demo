@@ -2,13 +2,12 @@ module tickert::event;
 
 // === Imports ===
 
-use std::string::{Self, String};
+use std::string::String;
 use sui::clock::{Self, Clock};
 
 // === Constants ===
 
 // Event status constants
-const STATUS_DRAFT: u8 = 0;
 const STATUS_ACTIVE: u8 = 1;
 const STATUS_CANCELLED: u8 = 2;
 const STATUS_COMPLETED: u8 = 3;
@@ -52,6 +51,7 @@ public struct Event has key, store {
 // === Public Functions ===
 
 /// Creates a new event and transfers it to the organizer
+#[allow(lint(self_transfer))]
 public fun create_event(
     metadata_url: vector<u8>, // URL to event metadata on Walrus
     capacity: u64, // Maximum number of tickets
@@ -70,11 +70,10 @@ public fun create_event(
 
     let metadata_url_string = metadata_url.to_string();
     let current_time = clock::timestamp_ms(clock);
-    let sender = ctx.sender();
 
     let event = Event {
         id: object::new(ctx),
-        organizer: sender,
+        organizer: ctx.sender(),
         metadata_url: metadata_url_string,
         capacity,
         price,
@@ -87,7 +86,7 @@ public fun create_event(
         is_public,
     };
 
-    transfer::public_transfer(event, sender);
+    transfer::public_transfer(event, ctx.sender());
 }
 
 /// Updates the event metadata URL

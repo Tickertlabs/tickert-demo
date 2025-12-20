@@ -2,7 +2,7 @@ module tickert::ticket;
 
 // === Imports ===
 
-use std::string::{Self, String};
+use std::string::String;
 use sui::clock::{Self, Clock};
 use tickert::event::{Self, Event};
 
@@ -40,6 +40,7 @@ public struct Ticket has key, store {
 
 /// Mints a new ticket NFT for an event
 /// Validates the event is active and has capacity, then transfers the ticket to the caller
+#[allow(lint(self_transfer))]
 public fun mint_ticket(
     event: &mut Event, // Event to mint ticket for
     encrypted_metadata_url: vector<u8>, // URL to encrypted ticket metadata on Walrus
@@ -50,7 +51,6 @@ public fun mint_ticket(
     assert!(event::is_active(event), EEventNotActive);
     assert!(event::sold(event) < event::capacity(event), EEventFull);
 
-    let holder_address = ctx.sender();
     let mint_time = clock::timestamp_ms(clock);
 
     // Increment sold count
@@ -59,13 +59,13 @@ public fun mint_ticket(
     let ticket = Ticket {
         id: object::new(ctx),
         event_id: object::id(event),
-        holder: holder_address,
+        holder: ctx.sender(),
         mint_time,
         status: TICKET_STATUS_VALID,
         encrypted_metadata_url: encrypted_metadata_url.to_string(),
     };
 
-    transfer::public_transfer(ticket, holder_address);
+    transfer::public_transfer(ticket, ctx.sender());
 }
 
 /// Marks a ticket as used

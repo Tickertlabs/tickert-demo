@@ -31,19 +31,18 @@ public struct Attendance has key, store {
 
 /// Mints an attendance NFT after verifying ticket ownership and validity
 /// Marks the ticket as used and transfers the attendance NFT to the attendee
+#[allow(lint(self_transfer))]
 public fun mint_attendance(
     ticket: &mut Ticket, // Ticket to verify
     clock: &Clock, // Clock object for timestamp
     ctx: &mut TxContext, // Transaction context
 ) {
-    let attendee_address = ctx.sender();
-
     // Validate ticket ownership and status
-    assert!(ticket::holder(ticket) == attendee_address, ENotTicketOwner);
+    assert!(ticket::holder(ticket) == ctx.sender(), ENotTicketOwner);
     assert!(ticket::is_valid(ticket), ETicketNotValid);
 
     // Mark ticket as used
-    ticket::mark_as_used(ticket, attendee_address);
+    ticket::mark_as_used(ticket, ctx.sender());
 
     let event_id = ticket::event_id(ticket);
     let timestamp = clock::timestamp_ms(clock);
@@ -51,13 +50,13 @@ public fun mint_attendance(
     let attendance = Attendance {
         id: object::new(ctx),
         event_id,
-        attendee: attendee_address,
+        attendee: ctx.sender(),
         timestamp,
         verified: true,
     };
 
     // Transfer to attendee (soulbound - cannot be transferred)
-    transfer::public_transfer(attendance, attendee_address);
+    transfer::public_transfer(attendance, ctx.sender());
 }
 
 // === View Functions ===
