@@ -5,6 +5,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useState } from 'react';
 import { Button, TextField, TextArea, Select, Checkbox, Flex, Box, Text } from '@radix-ui/themes';
 
 const eventSchema = z.object({
@@ -19,6 +20,7 @@ const eventSchema = z.object({
   price: z.number().min(0, 'Price must be 0 or greater'),
   requiresApproval: z.boolean(),
   isPublic: z.boolean(),
+  image: z.instanceof(FileList).optional(),
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -29,10 +31,12 @@ interface EventFormProps {
 }
 
 export function EventForm({ onSubmit, isLoading }: EventFormProps) {
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors },
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -42,6 +46,18 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
       category: '',
     },
   });
+
+  const imageFiles = watch('image');
+
+  // Handle image preview
+  if (imageFiles && imageFiles.length > 0 && !imagePreview) {
+    const file = imageFiles[0];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
 
   const onSubmitWithErrorHandling = async (data: EventFormData) => {
     try {
@@ -77,6 +93,42 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
           {errors.description && (
             <Text size="1" color="red" mt="1">
               {errors.description.message}
+            </Text>
+          )}
+        </Box>
+
+        <Box>
+          <Text size="2" weight="medium" mb="2" as="div">
+            Event Image (Optional)
+          </Text>
+          <input
+            type="file"
+            accept="image/*"
+            {...register('image')}
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid var(--gray-6)',
+              borderRadius: '4px',
+            }}
+          />
+          {imagePreview && (
+            <Box mt="2">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '300px',
+                  borderRadius: '4px',
+                  objectFit: 'cover',
+                }}
+              />
+            </Box>
+          )}
+          {errors.image && (
+            <Text size="1" color="red" mt="1">
+              {errors.image.message}
             </Text>
           )}
         </Box>

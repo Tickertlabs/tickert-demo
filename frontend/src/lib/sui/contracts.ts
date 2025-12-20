@@ -5,7 +5,7 @@
 
 import { SuiClient } from '@mysten/sui/client';
 
-export const PACKAGE_ID = import.meta.env.VITE_PACKAGE_ID || '0x8e5005145e6c16c8820ace59c30ccb8cd3d00ba328622fed02738182758c0d16';
+export const PACKAGE_ID = import.meta.env.VITE_PACKAGE_ID || '0x722a7fe94caa56eeeb90fc1c528d0816a24681ce3363284fd1f61ad4660bb751';
 
 /**
  * Get event object from blockchain
@@ -71,9 +71,16 @@ export async function getOwnedTickets(
 
   return tickets.data.map((ticket) => {
     if (ticket.data?.content && 'fields' in ticket.data.content) {
+      const fields = ticket.data.content.fields as any;
+      const objectId = ticket.data.objectId;
+      const ticketId = typeof objectId === 'string' ? objectId : String(objectId || '');
+      
+      // Remove id from fields if it exists to prevent override
+      const { id: _, ...fieldsWithoutId } = fields;
+      
       return {
-        id: ticket.data.objectId,
-        ...ticket.data.content.fields,
+        ...fieldsWithoutId,
+        id: ticketId, // Always use objectId as string
       };
     }
     return null;
@@ -100,9 +107,16 @@ export async function getOwnedEvents(
 
   return events.data.map((event) => {
     if (event.data?.content && 'fields' in event.data.content) {
+      const fields = event.data.content.fields as any;
+      const objectId = event.data.objectId;
+      const eventId = typeof objectId === 'string' ? objectId : String(objectId || '');
+      
+      // Remove id from fields if it exists to prevent override
+      const { id: _, ...fieldsWithoutId } = fields;
+      
       return {
-        id: event.data.objectId,
-        ...event.data.content.fields,
+        ...fieldsWithoutId,
+        id: eventId, // Always use objectId as string
       };
     }
     return null;

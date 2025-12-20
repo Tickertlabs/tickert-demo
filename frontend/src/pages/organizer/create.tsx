@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Container, Heading, Card } from '@radix-ui/themes';
 import { EventForm } from '../../components/event/EventForm';
-import { uploadEventMetadata, generateICSFile } from '../../lib/walrus/storage';
+import { uploadEventMetadata, uploadImageToWalrus, generateICSFile } from '../../lib/walrus/storage';
 import {
   buildCreateEventTransaction,
   getClockObjectId,
@@ -30,13 +30,29 @@ export function CreateEventPage() {
 
     try {
       console.log('Starting event creation process...');
-      // 1. Prepare metadata
+      // 1. Upload image first (if provided)
+      let imageUrl: string | undefined;
+      if (data.image && data.image.length > 0) {
+        console.log('Uploading image to Walrus...');
+        try {
+          imageUrl = await uploadImageToWalrus(data.image[0]);
+          console.log('Image uploaded, URL:', imageUrl);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          alert('Failed to upload image. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // 2. Prepare metadata
       const startTime = new Date(data.startTime);
       const endTime = new Date(data.endTime);
 
       const metadata = {
         title: data.title,
         description: data.description,
+        image: imageUrl,
         location: {
           name: data.locationName,
           address: data.locationAddress,
@@ -54,12 +70,12 @@ export function CreateEventPage() {
         }),
       };
 
-      // 2. Upload metadata to Walrus
+      // 3. Upload metadata to Walrus
       console.log('Uploading metadata to Walrus...');
       const metadataUrl = await uploadEventMetadata(metadata);
       console.log('Metadata uploaded, URL:', metadataUrl);
 
-      // 3. Build transaction
+      // 4. Build transaction
       const clockId = getClockObjectId();
       const txb = buildCreateEventTransaction(
         {
@@ -74,7 +90,7 @@ export function CreateEventPage() {
         clockId
       );
 
-      // 4. Sign and execute
+      // 5. Sign and execute
       signAndExecuteTransaction(
         {
           transaction: txb,

@@ -24,9 +24,9 @@ export function EventList({ events, metadataMap }: EventListProps) {
     <Grid columns={{ initial: '1', sm: '2', md: '3' }} gap="4">
       {events.map((event) => (
         <EventCard
-          key={event.id}
+          key={String(event.id)}
           event={event}
-          metadata={metadataMap?.get(event.id)}
+          metadata={metadataMap?.get(String(event.id))}
         />
       ))}
     </Grid>

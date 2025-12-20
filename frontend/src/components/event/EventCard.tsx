@@ -17,10 +17,29 @@ export function EventCard({ event, metadata }: EventCardProps) {
   const capacity = Number(event.capacity);
   const price = Number(event.price) / 1_000_000_000; // Convert MIST to SUI
 
+  // Ensure event.id is a string
+  // Handle all possible cases where id might not be a string
+  let eventId: string;
+  if (typeof event.id === 'string') {
+    eventId = event.id;
+  } else if (event.id && typeof event.id === 'object') {
+    // Try to extract string ID from object
+    const obj = event.id as any;
+    eventId = String(obj.id || obj.objectId || obj.value || JSON.stringify(obj));
+  } else {
+    eventId = String(event.id || '');
+  }
+  
+  // Final safety check - if still not a valid string, use empty string
+  if (!eventId || eventId === '[object Object]' || eventId === 'undefined' || eventId === 'null') {
+    console.error('EventCard: Invalid event.id:', event.id, 'event:', event);
+    eventId = '';
+  }
+
   return (
     <Card>
       <Link
-        to={`/events/${event.id}`}
+        to={`/events/${eventId}`}
         style={{ textDecoration: 'none', color: 'inherit' }}
       >
         {metadata?.image && (

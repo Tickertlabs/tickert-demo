@@ -79,10 +79,10 @@ export function EventDetailPage() {
       const clockId = getClockObjectId();
       const txb = buildMintTicketTransaction(
         {
-          eventId: id,
+          eventId: String(id),
           encryptedMetadataUrl,
         },
-        id,
+        String(id),
         clockId
       );
 
@@ -191,7 +191,7 @@ export function EventDetailPage() {
         </Flex>
 
         <RegisterButton
-          eventId={event.id}
+          eventId={String(event.id)}
           price={event.price}
           onRegister={handleRegister}
           isLoading={registering}

@@ -35,44 +35,90 @@ export interface EventMetadata {
 
 /**
  * Upload event metadata to Walrus
- * For development/testing, returns a mock URL if Walrus API is not available
+ * 
+ * According to Walrus documentation (https://docs.wal.app/docs/usage/web-api):
+ * - Uses PUT /v1/blobs endpoint on publisher service
+ * - Returns blob ID that can be used to retrieve the blob
+ * - Blob storage requires WAL token and SUI for payment
+ * 
+ * @param metadata - Event metadata to upload
+ * @returns Walrus blob ID (can be used to construct aggregator URL)
  */
 export async function uploadEventMetadata(
   metadata: EventMetadata
 ): Promise<string> {
-  try {
-    const client = getWalrusClient();
-    const jsonString = JSON.stringify(metadata, null, 2);
-    const url = await client.uploadBlob(jsonString);
-    return url;
-  } catch (error) {
-    console.warn('Walrus upload failed, using mock URL:', error);
-    // For development: return a mock URL
-    // In production, this should throw the error
-    const mockUrl = `https://walrus.xyz/mock/${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    return mockUrl;
+  const client = getWalrusClient();
+  const jsonString = JSON.stringify(metadata, null, 2);
+  const blobId = await client.uploadBlob(jsonString);
+  
+  if (!blobId) {
+    throw new Error('Failed to upload metadata to Walrus: No blob ID returned');
   }
+  
+  // Return blob ID - the full URL can be constructed as:
+  // https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}
+  return blobId;
 }
 
 /**
  * Upload image to Walrus
+ * 
+ * Uploads event images to Walrus blob storage.
+ * Payment (WAL token + SUI) is handled automatically by the publisher service.
+ * 
+ * @param imageFile - Image file to upload
+ * @returns Walrus blob ID (can be used to construct aggregator URL)
  */
 export async function uploadImageToWalrus(
   imageFile: File | Blob
 ): Promise<string> {
   const client = getWalrusClient();
-  const url = await client.uploadBlob(imageFile);
-  return url;
+  const blobId = await client.uploadBlob(imageFile);
+  
+  if (!blobId) {
+    throw new Error('Failed to upload image to Walrus: No blob ID returned');
+  }
+  
+  // Return blob ID - the full URL can be constructed as:
+  // https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}
+  return blobId;
 }
 
 /**
  * Retrieve event metadata from Walrus
+ * 
+ * Supports both blob ID and full URL formats:
+ * - Blob ID: "M4hsZGQ1oCktdzegB6HnI6Mi28S2nqOPHxK-W7_4BUk"
+ * - Full URL: "https://aggregator.walrus-testnet.walrus.space/v1/blobs/M4hsZGQ1oCktdzegB6HnI6Mi28S2nqOPHxK-W7_4BUk"
+ * 
+ * @param blobIdOrUrl - Blob ID or full aggregator URL
+ * @param aggregatorUrl - Optional aggregator URL (only used if blobIdOrUrl is a blob ID)
+ * @returns Event metadata
  */
 export async function getEventMetadata(
-  metadataUrl: string
+  blobIdOrUrl: string,
+  aggregatorUrl?: string
 ): Promise<EventMetadata> {
   const client = getWalrusClient();
-  return client.getJSON<EventMetadata>(metadataUrl);
+  
+  // Check if it's a full URL or just a blob ID
+  let blobId: string;
+  try {
+    const url = new URL(blobIdOrUrl);
+    // Extract blob ID from URL path: /v1/blobs/<blob-id>
+    const match = url.pathname.match(/\/v1\/blobs\/(.+)$/);
+    if (match) {
+      blobId = match[1];
+    } else {
+      // If URL doesn't match expected pattern, treat as blob ID
+      blobId = blobIdOrUrl;
+    }
+  } catch {
+    // Not a valid URL, treat as blob ID
+    blobId = blobIdOrUrl;
+  }
+  
+  return client.getJSON<EventMetadata>(blobId, aggregatorUrl);
 }
 
 /**

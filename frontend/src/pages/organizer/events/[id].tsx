@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
+import { useSuiClient } from '@mysten/dapp-kit';
 import { Container, Heading, Text, Box, Card, Flex, Button } from '@radix-ui/themes';
 import { queryEvent } from '../../../lib/sui/queries.js';
 import { getEventMetadata } from '../../../lib/walrus/storage.js';

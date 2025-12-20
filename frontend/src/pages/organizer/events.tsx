@@ -30,15 +30,20 @@ export function OrganizerEventsPage() {
 
       try {
         const ownedEvents = await queryOwnedEvents(client, currentAccount.address);
+        // Debug: log event structure
+        if (ownedEvents.length > 0) {
+          console.log('First event structure:', ownedEvents[0]);
+          console.log('First event.id type:', typeof ownedEvents[0].id, ownedEvents[0].id);
+        }
         setEvents(ownedEvents);
 
         // Load metadata for each event
         const metadataPromises = ownedEvents.map(async (event) => {
           try {
             const metadata = await getEventMetadata(event.metadata_url);
-            return [event.id, metadata] as [string, EventMetadata];
+            return [String(event.id), metadata] as [string, EventMetadata];
           } catch (error) {
-            console.error(`Error loading metadata for event ${event.id}:`, error);
+            console.error(`Error loading metadata for event ${String(event.id)}:`, error);
             return null;
           }
         });
