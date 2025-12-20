@@ -34,7 +34,7 @@ function App() {
           </Routes>
         </Box>
         <Footer />
-      </Box>
+        </Box>
     </BrowserRouter>
   );
 }

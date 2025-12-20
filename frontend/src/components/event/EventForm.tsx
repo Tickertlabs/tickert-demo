@@ -2,7 +2,7 @@
  * Event creation/editing form component
  */
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, TextField, TextArea, Select, Checkbox, Flex, Box, Text } from '@radix-ui/themes';
@@ -32,17 +32,28 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       requiresApproval: false,
       isPublic: true,
+      category: '',
     },
   });
 
+  const onSubmitWithErrorHandling = async (data: EventFormData) => {
+    try {
+      console.log('Form submitted with data:', data);
+      await onSubmit(data);
+    } catch (error) {
+      console.error('Form submission error:', error);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onSubmitWithErrorHandling)}>
       <Flex direction="column" gap="4">
         <Box>
           <TextField.Root
@@ -72,16 +83,30 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
 
         <Flex gap="4">
           <Box style={{ flex: 1 }}>
-            <Select.Root {...register('category')}>
-              <Select.Trigger placeholder="Category" />
-              <Select.Content>
-                <Select.Item value="technology">Technology</Select.Item>
-                <Select.Item value="business">Business</Select.Item>
-                <Select.Item value="arts">Arts</Select.Item>
-                <Select.Item value="sports">Sports</Select.Item>
-                <Select.Item value="other">Other</Select.Item>
-              </Select.Content>
-            </Select.Root>
+            <Controller
+              name="category"
+              control={control}
+              render={({ field }) => (
+                <Select.Root
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <Select.Trigger placeholder="Category" />
+                  <Select.Content>
+                    <Select.Item value="technology">Technology</Select.Item>
+                    <Select.Item value="business">Business</Select.Item>
+                    <Select.Item value="arts">Arts</Select.Item>
+                    <Select.Item value="sports">Sports</Select.Item>
+                    <Select.Item value="other">Other</Select.Item>
+                  </Select.Content>
+                </Select.Root>
+              )}
+            />
+            {errors.category && (
+              <Text size="1" color="red" mt="1">
+                {errors.category.message}
+              </Text>
+            )}
           </Box>
 
           <Box style={{ flex: 1 }}>
@@ -166,21 +191,39 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
 
         <Flex gap="4">
           <Box>
-            <label>
-              <Flex gap="2" align="center">
-                <Checkbox {...register('requiresApproval')} />
-                <Text size="2">Requires Approval</Text>
-              </Flex>
-            </label>
+            <Controller
+              name="requiresApproval"
+              control={control}
+              render={({ field }) => (
+                <label>
+                  <Flex gap="2" align="center">
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                    <Text size="2">Requires Approval</Text>
+                  </Flex>
+                </label>
+              )}
+            />
           </Box>
 
           <Box>
-            <label>
-              <Flex gap="2" align="center">
-                <Checkbox {...register('isPublic')} />
-                <Text size="2">Public Listing</Text>
-              </Flex>
-            </label>
+            <Controller
+              name="isPublic"
+              control={control}
+              render={({ field }) => (
+                <label>
+                  <Flex gap="2" align="center">
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                    <Text size="2">Public Listing</Text>
+                  </Flex>
+                </label>
+              )}
+            />
           </Box>
         </Flex>
 

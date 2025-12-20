@@ -19,6 +19,8 @@ export function CreateEventPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (data: any) => {
+    console.log('handleSubmit called with data:', data);
+    
     if (!currentAccount) {
       alert('Please connect your wallet');
       return;
@@ -27,6 +29,7 @@ export function CreateEventPage() {
     setIsLoading(true);
 
     try {
+      console.log('Starting event creation process...');
       // 1. Prepare metadata
       const startTime = new Date(data.startTime);
       const endTime = new Date(data.endTime);
@@ -52,7 +55,9 @@ export function CreateEventPage() {
       };
 
       // 2. Upload metadata to Walrus
+      console.log('Uploading metadata to Walrus...');
       const metadataUrl = await uploadEventMetadata(metadata);
+      console.log('Metadata uploaded, URL:', metadataUrl);
 
       // 3. Build transaction
       const clockId = getClockObjectId();
