@@ -4,17 +4,20 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSuiClient, useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount, useSignAndExecuteTransaction, useSignPersonalMessage } from '@mysten/dapp-kit';
 import { Container, Heading, Text, Box, Card, Flex } from '@radix-ui/themes';
 import { queryEvent } from '../../lib/sui/queries';
 import { getEventMetadata, getImageUrl } from '../../lib/walrus/storage';
+import { getWalrusClient } from '../../lib/walrus/client';
 import { RegisterButton } from '../../components/event/RegisterButton';
 import {
   buildMintTicketTransaction,
   getClockObjectId,
 } from '../../lib/sui/transactions';
-import { generateTicketKey, encryptTicketMetadata } from '../../lib/seal/encryption';
-import { Event, EventMetadata } from '../../types';
+import { getSealClient, createSessionKey, getSessionKeyPersonalMessage, setSessionKeySignature } from '../../lib/seal/client';
+import { encryptTicketMetadata, decryptLocationData, generateEncryptionId } from '../../lib/seal/encryption';
+import { Event } from '../../types';
+import type { SessionKey } from '../../lib/seal/client';
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,7 +26,7 @@ export function EventDetailPage() {
   const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [event, setEvent] = useState<Event | null>(null);
-  const [metadata, setMetadata] = useState<EventMetadata | null>(null);
+  const [walrusMetadata, setWalrusMetadata] = useState<{ image?: string; description: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
 
@@ -35,8 +38,9 @@ export function EventDetailPage() {
         const eventData = await queryEvent(client, id);
         if (eventData) {
           setEvent(eventData);
-          const metadataData = await getEventMetadata(eventData.metadata_url);
-          setMetadata(metadataData);
+          // Load large metadata (image and description) from Walrus
+          const walrusData = await getEventMetadata(eventData.metadata_url);
+          setWalrusMetadata(walrusData);
         }
       } catch (error) {
         console.error('Error loading event:', error);
@@ -56,26 +60,103 @@ export function EventDetailPage() {
 
     setRegistering(true);
     try {
-      // 1. Generate ticket encryption key
-      const keyId = await generateTicketKey();
+      if (!event) return;
 
-      // 2. Prepare ticket metadata (encrypted location, access link, etc.)
+      // 1. Handle location decryption if private
+      let ticketLocation: { name: string; address: string } | undefined;
+      
+      if (event.location_private && event.encrypted_location_url && event.location_encryption_key_id) {
+        console.log('Location is private, decrypting with Seal...');
+        try {
+          // Initialize Seal client
+          const sealClient = getSealClient({ suiClient: client });
+          
+          // Create session key for decryption
+          const sessionKey = await createSessionKey(currentAccount.address, client, 1);
+          const personalMessage = await getSessionKeyPersonalMessage(sessionKey);
+          
+          // Sign personal message
+          await new Promise<void>((resolve, reject) => {
+            signPersonalMessage(
+              { message: personalMessage },
+              {
+                onSuccess: async ({ signature }) => {
+                  try {
+                    await setSessionKeySignature(sessionKey, signature);
+                    resolve();
+                  } catch (e) {
+                    reject(e);
+                  }
+                },
+                onError: (error) => {
+                  console.error('Error signing session key:', error);
+                  reject(error);
+                },
+              }
+            );
+          });
+          
+          // Fetch encrypted location from Walrus
+          const walrusClient = getWalrusClient();
+          const encryptedLocationBlob = await walrusClient.getBlob(event.encrypted_location_url);
+          const encryptedLocationBytes = new Uint8Array(await encryptedLocationBlob.arrayBuffer());
+          
+          // Decrypt location using Seal
+          const decryptedLocation = await decryptLocationData(
+            sealClient,
+            encryptedLocationBytes,
+            event.location_encryption_key_id,
+            client,
+            sessionKey,
+            id // Event object ID for seal_approve
+          );
+          
+          if (decryptedLocation.location) {
+            ticketLocation = decryptedLocation.location;
+            console.log('Location decrypted successfully');
+          }
+        } catch (error) {
+          console.error('Error decrypting location:', error);
+          // Fallback to placeholder if decryption fails
+          ticketLocation = {
+            name: 'Location will be available after ticket purchase',
+            address: 'Please check your ticket for location details',
+          };
+        }
+      } else {
+        // Location is public, use on-chain data
+        ticketLocation = {
+          name: event.location_name,
+          address: event.location_address,
+        };
+      }
+
+      // 2. Initialize Seal client and encrypt ticket metadata
+      const sealClient = getSealClient({ suiClient: client });
+      const ticketEncryptionId = generateEncryptionId(currentAccount.address);
+      
+      // 3. Prepare ticket metadata (location, access link, etc.)
       const ticketMetadata = {
-        location: metadata?.location,
+        location: ticketLocation,
         accessLink: `https://tickert.app/events/${id}`,
         qrCode: id,
-        additionalInfo: `Event: ${metadata?.title}`,
+        additionalInfo: `Event: ${event.title}`,
       };
 
-      // 3. Encrypt ticket metadata
-      const encryptedMetadata = await encryptTicketMetadata(ticketMetadata, keyId);
+      // 4. Encrypt ticket metadata using Seal
+      const encryptedMetadataBytes = await encryptTicketMetadata(
+        sealClient,
+        ticketMetadata,
+        ticketEncryptionId
+      );
 
-      // 4. Upload encrypted metadata to Walrus (or use Seal's storage)
-      // For now, we'll store the encrypted string directly
-      // In production, upload to Walrus and get URL
-      const encryptedMetadataUrl = encryptedMetadata; // Placeholder
+      // 5. Upload encrypted metadata to Walrus
+      const walrusClient = getWalrusClient();
+      const encryptedMetadataBlob = new Blob([encryptedMetadataBytes], { type: 'application/octet-stream' });
+      const encryptedMetadataBlobId = await walrusClient.uploadBlob(encryptedMetadataBlob);
+      const encryptedMetadataUrl = encryptedMetadataBlobId;
 
-      // 5. Build mint ticket transaction
+      // 6. Build mint ticket transaction
       const clockId = getClockObjectId();
       const txb = buildMintTicketTransaction(
         {
@@ -86,7 +167,7 @@ export function EventDetailPage() {
         clockId
       );
 
-      // 6. Sign and execute transaction
+      // 7. Sign and execute transaction
       signAndExecuteTransaction(
         {
           transaction: txb,
@@ -122,7 +203,7 @@ export function EventDetailPage() {
     );
   }
 
-  if (!event || !metadata) {
+  if (!event || !walrusMetadata) {
     return (
       <Container size="4" py="9">
         <Box style={{ textAlign: 'center' }}>
@@ -136,7 +217,7 @@ export function EventDetailPage() {
   const endDate = new Date(Number(event.end_time));
   const sold = Number(event.sold);
   const capacity = Number(event.capacity);
-  const imageUrl = getImageUrl(metadata.image);
+  const imageUrl = getImageUrl(walrusMetadata.image);
 
   return (
     <Container size="4" py="5">
@@ -156,11 +237,11 @@ export function EventDetailPage() {
         )}
 
         <Heading size="8" mb="3">
-          {metadata.title}
+          {event.title}
         </Heading>
 
         <Text size="4" color="gray" mb="4">
-          {metadata.description}
+          {walrusMetadata.description}
         </Text>
 
         <Flex direction="column" gap="3" mb="5">
@@ -173,14 +254,20 @@ export function EventDetailPage() {
 
           <Box>
             <Text weight="bold">Location:</Text>
-            <Text ml="2">
-              {metadata.location.name} - {metadata.location.address}
-            </Text>
+            {event.location_private ? (
+              <Text ml="2" color="gray" style={{ fontStyle: 'italic' }}>
+                Private - Location will be revealed after ticket purchase
+              </Text>
+            ) : (
+              <Text ml="2">
+                {event.location_name} - {event.location_address}
+              </Text>
+            )}
           </Box>
 
           <Box>
             <Text weight="bold">Category:</Text>
-            <Text ml="2">{metadata.category}</Text>
+            <Text ml="2">{event.category}</Text>
           </Box>
 
           <Box>

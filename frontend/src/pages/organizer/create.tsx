@@ -4,10 +4,12 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Container, Heading, Card } from '@radix-ui/themes';
 import { EventForm } from '../../components/event/EventForm';
-import { uploadEventMetadata, uploadImageToWalrus, generateICSFile } from '../../lib/walrus/storage';
+import { uploadEventMetadata, uploadImageToWalrus } from '../../lib/walrus/storage';
+import { getSealClient } from '../../lib/seal/client';
+import { encryptLocationData, generateEncryptionId } from '../../lib/seal/encryption';
 import {
   buildCreateEventTransaction,
   getClockObjectId,
@@ -15,6 +17,7 @@ import {
 export function CreateEventPage() {
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
+  const suiClient = useSuiClient();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,41 +48,77 @@ export function CreateEventPage() {
         }
       }
 
-      // 2. Prepare metadata
+      // 2. Handle location encryption if private
       const startTime = new Date(data.startTime);
       const endTime = new Date(data.endTime);
+      
+      let locationEncryptionKeyId: string = '';
+      let encryptedLocationUrl: string = '';
+      let publicLocationName: string;
+      let publicLocationAddress: string;
 
-      const metadata = {
-        title: data.title,
-        description: data.description,
+      if (data.locationPrivate) {
+        console.log('Location is private, encrypting with Seal...');
+        
+        // Initialize Seal client
+        const sealClient = getSealClient({ suiClient });
+        
+        // Generate encryption ID (address + nonce)
+        const encryptionId = generateEncryptionId(currentAccount.address);
+        locationEncryptionKeyId = encryptionId;
+        console.log('Encryption ID created:', encryptionId);
+
+        // Prepare location data for encryption
+        const locationData = {
+          location: {
+            name: data.locationName,
+            address: data.locationAddress,
+          },
+        };
+
+        // Encrypt location data using Seal
+        const encryptedLocationBytes = await encryptLocationData(
+          sealClient,
+          locationData,
+          encryptionId
+        );
+        console.log('Location encrypted with Seal');
+
+        // Upload encrypted location to Walrus
+        const encryptedLocationBlob = new Blob([encryptedLocationBytes], { type: 'application/octet-stream' });
+        encryptedLocationUrl = await uploadImageToWalrus(encryptedLocationBlob);
+        console.log('Encrypted location uploaded to Walrus:', encryptedLocationUrl);
+
+        // For public display, use placeholder
+        publicLocationName = 'Private Location';
+        publicLocationAddress = 'Location will be revealed after ticket purchase';
+      } else {
+        // Location is public
+        publicLocationName = data.locationName;
+        publicLocationAddress = data.locationAddress;
+      }
+
+      // 3. Upload large metadata (image and description only) to Walrus
+      console.log('Uploading large metadata to Walrus...');
+      const walrusMetadata = {
         image: imageUrl,
-        location: {
-          name: data.locationName,
-          address: data.locationAddress,
-        },
-        category: data.category,
-        agenda: [],
-        speakers: [],
-        announcements: [],
-        ics_calendar: generateICSFile({
-          title: data.title,
-          description: data.description,
-          startTime,
-          endTime,
-          location: data.locationAddress,
-        }),
+        description: data.description,
       };
+      const metadataUrl = await uploadEventMetadata(walrusMetadata);
+      console.log('Large metadata uploaded to Walrus, URL:', metadataUrl);
 
-      // 3. Upload metadata to Walrus
-      console.log('Uploading metadata to Walrus...');
-      const metadataUrl = await uploadEventMetadata(metadata);
-      console.log('Metadata uploaded, URL:', metadataUrl);
-
-      // 4. Build transaction
+      // 4. Build transaction with on-chain metadata
       const clockId = getClockObjectId();
       const txb = buildCreateEventTransaction(
         {
-          metadataUrl,
+          metadataUrl, // Walrus URL for image and description
+          title: data.title,
+          category: data.category,
+          locationName: publicLocationName,
+          locationAddress: publicLocationAddress,
+          locationPrivate: data.locationPrivate || false,
+          encryptedLocationUrl,
+          locationEncryptionKeyId,
           capacity: data.capacity,
           price: Math.floor(data.price * 1_000_000_000), // Convert SUI to MIST
           startTime: Math.floor(startTime.getTime()),

@@ -4,14 +4,14 @@
 
 import { Grid, Box } from '@radix-ui/themes';
 import { EventCard } from './EventCard';
-import { Event, EventMetadata } from '../../types';
+import { Event } from '../../types';
 
 interface EventListProps {
   events: Event[];
-  metadataMap?: Map<string, EventMetadata>;
+  imageMap?: Map<string, string>; // Map of event ID to image blob ID from Walrus
 }
 
-export function EventList({ events, metadataMap }: EventListProps) {
+export function EventList({ events, imageMap }: EventListProps) {
   if (events.length === 0) {
     return (
       <Box py="9" style={{ textAlign: 'center' }}>
@@ -26,7 +26,7 @@ export function EventList({ events, metadataMap }: EventListProps) {
         <EventCard
           key={String(event.id)}
           event={event}
-          metadata={metadataMap?.get(String(event.id))}
+          imageUrl={imageMap?.get(String(event.id))}
         />
       ))}
     </Grid>

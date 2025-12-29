@@ -1,101 +1,107 @@
 /**
- * Seal client setup
+ * Seal client setup using @mysten/seal SDK
  * Seal is a decentralized secrets management service for Sui
- * Used for encrypting ticket metadata (location, access links, etc.)
+ * Used for encrypting event location data
  */
 
-const SEAL_API_URL = import.meta.env.VITE_SEAL_API_URL || 'https://sealplus.wal.app';
+import { SealClient, SessionKey } from '@mysten/seal';
+import { SuiClient } from '@mysten/sui/client';
+import { PACKAGE_ID } from '../sui/contracts';
+
+// Seal server object IDs - can be configured via environment variable or uses defaults
+// Format: comma-separated list of object IDs
+const DEFAULT_SEAL_SERVER_OBJECT_IDS = [
+  "0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75",
+  "0xf5d14a81a982144ae441cd7d64b09027f116a468bd36e7eca494f750591623c8"
+];
+
+const SEAL_SERVER_OBJECT_IDS = import.meta.env.VITE_SEAL_SERVER_OBJECT_IDS 
+  ? import.meta.env.VITE_SEAL_SERVER_OBJECT_IDS.split(',').map((id: string) => id.trim())
+  : DEFAULT_SEAL_SERVER_OBJECT_IDS;
+
+const ENCRYPTION_THRESHOLD = 1; // Minimum number of servers needed for encryption
 
 export interface SealClientConfig {
-  apiUrl?: string;
-  apiKey?: string;
-}
-
-class SealClient {
-  private apiUrl: string;
-  private apiKey?: string;
-
-  constructor(config: SealClientConfig = {}) {
-    this.apiUrl = config.apiUrl || SEAL_API_URL;
-    this.apiKey = config.apiKey;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
-    }
-
-    const response = await fetch(`${this.apiUrl}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Seal API error: ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Create an encryption key
-   */
-  async createKey(): Promise<string> {
-    const response = await this.request<{ keyId: string }>('/keys', {
-      method: 'POST',
-    });
-    return response.keyId;
-  }
-
-  /**
-   * Encrypt data
-   */
-  async encrypt(keyId: string, data: string): Promise<string> {
-    const response = await this.request<{ encrypted: string }>('/encrypt', {
-      method: 'POST',
-      body: JSON.stringify({ keyId, data }),
-    });
-    return response.encrypted;
-  }
-
-  /**
-   * Decrypt data
-   */
-  async decrypt(keyId: string, encrypted: string): Promise<string> {
-    const response = await this.request<{ decrypted: string }>('/decrypt', {
-      method: 'POST',
-      body: JSON.stringify({ keyId, encrypted }),
-    });
-    return response.decrypted;
-  }
+  suiClient: SuiClient;
+  serverObjectIds?: string[];
+  threshold?: number;
+  verifyKeyServers?: boolean;
 }
 
 // Singleton instance
-let sealClient: SealClient | null = null;
+let sealClientInstance: SealClient | null = null;
 
 /**
  * Get or create Seal client instance
  */
-export function getSealClient(config?: SealClientConfig): SealClient {
-  if (!sealClient) {
-    sealClient = new SealClient(config);
+export function getSealClient(config: SealClientConfig): SealClient {
+  if (!sealClientInstance) {
+    const serverIds = config.serverObjectIds || SEAL_SERVER_OBJECT_IDS;
+    
+    if (serverIds.length === 0) {
+      throw new Error('Seal server object IDs not configured. Please set VITE_SEAL_SERVER_OBJECT_IDS environment variable.');
+    }
+
+    sealClientInstance = new SealClient({
+      suiClient: config.suiClient as any, // Seal SDK expects specific SuiClient type
+      // @ts-ignore - serverConfigs is used in Seal SDK example code
+      serverConfigs: serverIds.map((id: string) => ({
+        objectId: id,
+        weight: 1,
+      })),
+      verifyKeyServers: config.verifyKeyServers ?? false,
+    } as any);
   }
-  return sealClient;
+  
+  return sealClientInstance;
 }
 
 /**
- * Initialize Seal client
+ * Initialize Seal client (replaces existing instance)
  */
 export function initSealClient(config: SealClientConfig): SealClient {
-  sealClient = new SealClient(config);
-  return sealClient;
+  sealClientInstance = null;
+  return getSealClient(config);
 }
 
+/**
+ * Create a session key for Seal operations
+ * Session keys are used to authenticate decryption requests
+ */
+export async function createSessionKey(
+  address: string,
+  suiClient: SuiClient,
+  ttlMinutes: number = 1
+): Promise<SessionKey> {
+  // @ts-ignore - SessionKey.create might have different API in different versions
+  const sessionKey = await SessionKey.create({
+    address,
+    packageId: PACKAGE_ID,
+    ttlMin: ttlMinutes,
+    suiClient: suiClient as any,
+  });
+
+  return sessionKey;
+}
+
+/**
+ * Get personal message for session key signing
+ */
+export async function getSessionKeyPersonalMessage(
+  sessionKey: SessionKey
+): Promise<Uint8Array> {
+  return sessionKey.getPersonalMessage();
+}
+
+/**
+ * Set personal message signature on session key
+ */
+export async function setSessionKeySignature(
+  sessionKey: SessionKey,
+  signature: string
+): Promise<void> {
+  await sessionKey.setPersonalMessageSignature(signature);
+}
+
+export { SealClient, SessionKey };
+export { ENCRYPTION_THRESHOLD };

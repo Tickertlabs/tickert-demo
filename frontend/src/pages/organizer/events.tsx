@@ -9,14 +9,14 @@ import { Container, Heading, Button, Box } from '@radix-ui/themes';
 import { EventList } from '../../components/event/EventList';
 import { queryOwnedEvents } from '../../lib/sui/queries';
 import { getEventMetadata } from '../../lib/walrus/storage';
-import { Event, EventMetadata } from '../../types';
+import { Event } from '../../types';
 
 export function OrganizerEventsPage() {
   const navigate = useNavigate();
   const client = useSuiClient();
   const currentAccount = useCurrentAccount();
   const [events, setEvents] = useState<Event[]>([]);
-  const [metadataMap, setMetadataMap] = useState<Map<string, EventMetadata>>(
+  const [imageMap, setImageMap] = useState<Map<string, string>>(
     new Map()
   );
   const [loading, setLoading] = useState(true);
@@ -37,22 +37,20 @@ export function OrganizerEventsPage() {
         }
         setEvents(ownedEvents);
 
-        // Load metadata for each event
-        const metadataPromises = ownedEvents.map(async (event) => {
+        // Load image from Walrus for each event (only image and description are stored there)
+        const imagePromises = ownedEvents.map(async (event) => {
           try {
-            const metadata = await getEventMetadata(event.metadata_url);
-            return [String(event.id), metadata] as [string, EventMetadata];
+            const walrusMetadata = await getEventMetadata(event.metadata_url);
+            return [String(event.id), walrusMetadata.image || ''] as [string, string];
           } catch (error) {
-            console.error(`Error loading metadata for event ${String(event.id)}:`, error);
-            return null;
+            console.error(`Error loading image for event ${String(event.id)}:`, error);
+            return [String(event.id), ''] as [string, string];
           }
         });
 
-        const metadataResults = await Promise.all(metadataPromises);
-        const newMetadataMap = new Map(
-          metadataResults.filter((r): r is [string, EventMetadata] => r !== null)
-        );
-        setMetadataMap(newMetadataMap);
+        const imageResults = await Promise.all(imagePromises);
+        const newImageMap = new Map(imageResults);
+        setImageMap(newImageMap);
       } catch (error) {
         console.error('Error loading events:', error);
       } finally {
@@ -81,7 +79,7 @@ export function OrganizerEventsPage() {
           Create Event
         </Button>
       </Box>
-      <EventList events={events} metadataMap={metadataMap} />
+      <EventList events={events} imageMap={imageMap} />
     </Container>
   );
 }

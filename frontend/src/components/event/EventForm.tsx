@@ -14,6 +14,7 @@ const eventSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   locationName: z.string().min(1, 'Location name is required'),
   locationAddress: z.string().min(1, 'Location address is required'),
+  locationPrivate: z.boolean(),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
   capacity: z.number().min(1, 'Capacity must be at least 1'),
@@ -43,6 +44,7 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
     defaultValues: {
       requiresApproval: false,
       isPublic: true,
+      locationPrivate: false,
       category: '',
     },
   });
@@ -211,6 +213,24 @@ export function EventForm({ onSubmit, isLoading }: EventFormProps) {
               {errors.locationAddress.message}
             </Text>
           )}
+        </Box>
+
+        <Box>
+          <Controller
+            name="locationPrivate"
+            control={control}
+            render={({ field }) => (
+              <label>
+                <Flex gap="2" align="center">
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Text size="2">Keep Location Private (encrypted with Seal)</Text>
+                </Flex>
+              </label>
+            )}
+          />
         </Box>
 
         <Flex gap="4">

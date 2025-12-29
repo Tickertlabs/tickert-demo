@@ -5,47 +5,28 @@
 
 import { getWalrusClient, getBlobUrl } from './client';
 
-export interface EventMetadata {
-  title: string;
-  description: string;
-  image?: string;
-  location: {
-    name: string;
-    address: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  category: string;
-  tags?: string[];
-  agenda?: Array<{
-    time: string;
-    title: string;
-    speaker?: string;
-  }>;
-  speakers?: Array<{
-    name: string;
-    bio?: string;
-    image?: string;
-  }>;
-  announcements?: string[];
-  ics_calendar?: string;
+/**
+ * Large metadata stored on Walrus (image and description only)
+ * Other metadata fields are stored on-chain
+ */
+export interface WalrusMetadata {
+  image?: string; // Walrus blob ID for image
+  description: string; // Event description (can be long)
 }
 
 /**
- * Upload event metadata to Walrus
+ * Upload large event metadata to Walrus (image and description only)
  * 
  * According to Walrus documentation (https://docs.wal.app/docs/usage/web-api):
  * - Uses PUT /v1/blobs endpoint on publisher service
  * - Returns blob ID that can be used to retrieve the blob
  * - Blob storage requires WAL token and SUI for payment
  * 
- * @param metadata - Event metadata to upload
+ * @param metadata - Large metadata (image and description only)
  * @returns Walrus blob ID (can be used to construct aggregator URL)
  */
 export async function uploadEventMetadata(
-  metadata: EventMetadata
+  metadata: WalrusMetadata
 ): Promise<string> {
   const client = getWalrusClient();
   const jsonString = JSON.stringify(metadata, null, 2);
@@ -85,7 +66,7 @@ export async function uploadImageToWalrus(
 }
 
 /**
- * Retrieve event metadata from Walrus
+ * Retrieve large event metadata from Walrus (image and description only)
  * 
  * Supports both blob ID and full URL formats:
  * - Blob ID: "M4hsZGQ1oCktdzegB6HnI6Mi28S2nqOPHxK-W7_4BUk"
@@ -93,12 +74,12 @@ export async function uploadImageToWalrus(
  * 
  * @param blobIdOrUrl - Blob ID or full aggregator URL
  * @param aggregatorUrl - Optional aggregator URL (only used if blobIdOrUrl is a blob ID)
- * @returns Event metadata
+ * @returns Large metadata (image and description)
  */
 export async function getEventMetadata(
   blobIdOrUrl: string,
   aggregatorUrl?: string
-): Promise<EventMetadata> {
+): Promise<WalrusMetadata> {
   const client = getWalrusClient();
   
   // Check if it's a full URL or just a blob ID
@@ -118,7 +99,7 @@ export async function getEventMetadata(
     blobId = blobIdOrUrl;
   }
   
-  return client.getJSON<EventMetadata>(blobId, aggregatorUrl);
+  return client.getJSON<WalrusMetadata>(blobId, aggregatorUrl);
 }
 
 /**

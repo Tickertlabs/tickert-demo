@@ -4,15 +4,15 @@
 
 import { Card, Heading, Text, Box, Flex } from '@radix-ui/themes';
 import { Link } from 'react-router-dom';
-import { Event, EventMetadata } from '../../types';
+import { Event } from '../../types';
 import { getImageUrl } from '../../lib/walrus/storage';
 
 interface EventCardProps {
   event: Event;
-  metadata?: EventMetadata;
+  imageUrl?: string; // Optional image URL from Walrus
 }
 
-export function EventCard({ event, metadata }: EventCardProps) {
+export function EventCard({ event, imageUrl: propImageUrl }: EventCardProps) {
   const startDate = new Date(Number(event.start_time));
   const sold = Number(event.sold);
   const capacity = Number(event.capacity);
@@ -37,7 +37,7 @@ export function EventCard({ event, metadata }: EventCardProps) {
     eventId = '';
   }
 
-  const imageUrl = getImageUrl(metadata?.image);
+  const imageUrl = propImageUrl ? getImageUrl(propImageUrl) : undefined;
 
   return (
     <Card>
@@ -58,12 +58,12 @@ export function EventCard({ event, metadata }: EventCardProps) {
             }}
           />
         )}
-        <Heading size="4">{metadata?.title || 'Untitled Event'}</Heading>
+        <Heading size="4">{event.title || 'Untitled Event'}</Heading>
         <Text size="2" color="gray" mt="2">
           {startDate.toLocaleDateString()} {startDate.toLocaleTimeString()}
         </Text>
         <Text size="2" color="gray" mt="1">
-          {metadata?.location?.name || 'Location TBA'}
+          {event.location_private ? 'Private Location' : event.location_name || 'Location TBA'}
         </Text>
         <Flex justify="between" mt="3">
           <Text size="2">

@@ -6,7 +6,14 @@ import { Transaction } from '@mysten/sui/transactions';
 import { PACKAGE_ID } from './contracts';
 
 export interface EventParams {
-  metadataUrl: string;
+  metadataUrl: string; // Walrus URL for image and description
+  title: string;
+  category: string;
+  locationName: string;
+  locationAddress: string;
+  locationPrivate: boolean;
+  encryptedLocationUrl: string; // Empty if locationPrivate is false
+  locationEncryptionKeyId: string; // Empty if locationPrivate is false
   capacity: number;
   price: number;
   startTime: number;
@@ -32,7 +39,14 @@ export function buildCreateEventTransaction(
   txb.moveCall({
     target: `${PACKAGE_ID}::event::create_event`,
     arguments: [
-      txb.pure.string(params.metadataUrl),
+      txb.pure.string(params.metadataUrl), // Walrus URL for image and description
+      txb.pure.string(params.title),
+      txb.pure.string(params.category),
+      txb.pure.string(params.locationName),
+      txb.pure.string(params.locationAddress),
+      txb.pure.bool(params.locationPrivate),
+      txb.pure.string(params.encryptedLocationUrl),
+      txb.pure.string(params.locationEncryptionKeyId),
       txb.pure.u64(params.capacity),
       txb.pure.u64(params.price),
       txb.pure.u64(params.startTime),

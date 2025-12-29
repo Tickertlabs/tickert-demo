@@ -8,7 +8,14 @@ import { PACKAGE_ID } from './contracts';
 export interface EventData {
   id: string;
   organizer: string;
-  metadata_url: string;
+  metadata_url: string; // Walrus URL for image and description
+  title: string;
+  category: string;
+  location_name: string;
+  location_address: string;
+  location_private: boolean;
+  encrypted_location_url: string;
+  location_encryption_key_id: string;
   capacity: string;
   price: string;
   sold: string;
