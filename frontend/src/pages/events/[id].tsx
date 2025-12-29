@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSuiClient, useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Container, Heading, Text, Box, Card, Flex } from '@radix-ui/themes';
 import { queryEvent } from '../../lib/sui/queries';
-import { getEventMetadata } from '../../lib/walrus/storage';
+import { getEventMetadata, getImageUrl } from '../../lib/walrus/storage';
 import { RegisterButton } from '../../components/event/RegisterButton';
 import {
   buildMintTicketTransaction,
@@ -136,16 +136,17 @@ export function EventDetailPage() {
   const endDate = new Date(Number(event.end_time));
   const sold = Number(event.sold);
   const capacity = Number(event.capacity);
+  const imageUrl = getImageUrl(metadata.image);
 
   return (
     <Container size="4" py="5">
       <Card>
-        {metadata.image && (
+        {imageUrl && (
           <Box
             style={{
               width: '100%',
               height: '400px',
-              backgroundImage: `url(${metadata.image})`,
+              backgroundImage: `url(${imageUrl})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               borderRadius: 'var(--radius-2)',

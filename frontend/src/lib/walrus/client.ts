@@ -21,8 +21,8 @@
 // Note: For reading blobs, use aggregator service:
 // Testnet: https://aggregator.walrus-testnet.walrus.space
 // Mainnet: https://aggregator.walrus.walrus.space
-const WALRUS_API_URL = import.meta.env.VITE_WALRUS_API_URL || 'https://publisher.walrus-testnet.walrus.space';
-const WALRUS_AGGREGATOR_URL = import.meta.env.VITE_WALRUS_AGGREGATOR_URL || 'https://aggregator.walrus-testnet.walrus.space';
+const WALRUS_API_URL = import.meta.env.VITE_WALRUS_API_URL || 'https://sui-walrus-testnet-publisher.bwarelabs.com';
+const WALRUS_AGGREGATOR_URL = import.meta.env.VITE_WALRUS_AGGREGATOR_URL || 'https://sui-walrus-tn-aggregator.bwarelabs.com';
 
 export interface WalrusClientConfig {
   apiUrl?: string; // Publisher service URL

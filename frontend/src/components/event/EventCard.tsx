@@ -5,6 +5,7 @@
 import { Card, Heading, Text, Box, Flex } from '@radix-ui/themes';
 import { Link } from 'react-router-dom';
 import { Event, EventMetadata } from '../../types';
+import { getImageUrl } from '../../lib/walrus/storage';
 
 interface EventCardProps {
   event: Event;
@@ -36,18 +37,20 @@ export function EventCard({ event, metadata }: EventCardProps) {
     eventId = '';
   }
 
+  const imageUrl = getImageUrl(metadata?.image);
+
   return (
     <Card>
       <Link
         to={`/events/${eventId}`}
         style={{ textDecoration: 'none', color: 'inherit' }}
       >
-        {metadata?.image && (
+        {imageUrl && (
           <Box
             style={{
               width: '100%',
               height: '200px',
-              backgroundImage: `url(${metadata.image})`,
+              backgroundImage: `url(${imageUrl})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               borderRadius: 'var(--radius-2)',

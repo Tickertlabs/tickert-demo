@@ -3,7 +3,7 @@
  * Handles event metadata upload and retrieval
  */
 
-import { getWalrusClient } from './client';
+import { getWalrusClient, getBlobUrl } from './client';
 
 export interface EventMetadata {
   title: string;
@@ -119,6 +119,31 @@ export async function getEventMetadata(
   }
   
   return client.getJSON<EventMetadata>(blobId, aggregatorUrl);
+}
+
+/**
+ * Get image URL from Walrus blob ID
+ * 
+ * Converts a Walrus blob ID to a full URL that can be used in img src or CSS background-image.
+ * If the input is already a URL, it returns it as-is.
+ * 
+ * @param blobIdOrUrl - Blob ID or full URL
+ * @returns Full URL to the image
+ */
+export function getImageUrl(blobIdOrUrl: string | undefined): string | undefined {
+  if (!blobIdOrUrl) {
+    return undefined;
+  }
+
+  // Check if it's already a full URL
+  try {
+    const url = new URL(blobIdOrUrl);
+    // If it's a valid URL, return it as-is
+    return url.toString();
+  } catch {
+    // Not a valid URL, treat as blob ID and construct URL
+    return getBlobUrl(blobIdOrUrl);
+  }
 }
 
 /**
