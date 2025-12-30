@@ -3,13 +3,17 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useSuiClient } from '@mysten/dapp-kit';
 import { Container, Heading, Box } from '@radix-ui/themes';
 import { EventList } from '../../components/event/EventList';
-import { Event, EventMetadata } from '../../types';
+import { queryPublicEvents } from '../../lib/sui/queries';
+import { getEventMetadata } from '../../lib/walrus/storage';
+import { Event } from '../../types';
 
 export function EventsPage() {
-  const [events] = useState<Event[]>([]);
-  const [metadataMap] = useState<Map<string, EventMetadata>>(
+  const client = useSuiClient();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [imageMap, setImageMap] = useState<Map<string, string>>(
     new Map()
   );
   const [loading, setLoading] = useState(true);
@@ -17,18 +21,33 @@ export function EventsPage() {
   useEffect(() => {
     async function loadEvents() {
       try {
-        // TODO: Replace with indexer API call for public events
-        // For now, this is a placeholder
-        // In production, use: GET /api/events?is_public=true&status=1
-        setLoading(false);
+        // Query all public active events using GraphQL
+        const publicEvents = await queryPublicEvents(client);
+        setEvents(publicEvents);
+
+        // Load images from Walrus for each event
+        const imagePromises = publicEvents.map(async (event) => {
+          try {
+            const walrusMetadata = await getEventMetadata(event.metadata_url);
+            return [String(event.id), walrusMetadata.image || ''] as [string, string];
+          } catch (error) {
+            console.error(`Error loading image for event ${String(event.id)}:`, error);
+            return [String(event.id), ''] as [string, string];
+          }
+        });
+
+        const imageResults = await Promise.all(imagePromises);
+        const newImageMap = new Map(imageResults);
+        setImageMap(newImageMap);
       } catch (error) {
         console.error('Error loading events:', error);
+      } finally {
         setLoading(false);
       }
     }
 
     loadEvents();
-  }, []);
+  }, [client]);
 
   if (loading) {
     return (
@@ -45,7 +64,7 @@ export function EventsPage() {
       <Heading size="8" mb="5">
         Upcoming Events
       </Heading>
-      <EventList events={events} metadataMap={metadataMap} />
+      <EventList events={events} imageMap={imageMap} />
     </Container>
   );
 }

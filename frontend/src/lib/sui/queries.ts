@@ -212,6 +212,115 @@ export async function queryOwnedTickets(
 }
 
 /**
+ * Query all public active events
+ * Since events are shared objects, we use Sui GraphQL API to query all events
+ * and filter by is_public and status client-side
+ */
+export async function queryPublicEvents(
+  client: SuiClient
+): Promise<EventData[]> {
+  try {
+    // Get GraphQL endpoint from environment or derive from RPC URL
+    const graphqlEndpoint = getGraphQLEndpoint(client);
+    
+    if (!graphqlEndpoint) {
+      console.warn('GraphQL endpoint not available. Cannot query public events.');
+      return [];
+    }
+
+    // GraphQL query to get all Event objects (shared objects)
+    const query = `
+      query ($packageId: String!) {
+        objects(
+          filter: {
+            type: $packageId
+          }
+          first: 50
+        ) {
+          nodes {
+            address
+            asMoveObject {
+              contents {
+                json
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      packageId: `${PACKAGE_ID}::event::Event`,
+    };
+
+    const response = await fetch(graphqlEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`GraphQL query failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (result.errors) {
+      console.error('GraphQL errors:', result.errors);
+      result.errors.forEach((error: any) => {
+        console.error('GraphQL error message:', error.message);
+        console.error('GraphQL error locations:', error.locations);
+        console.error('GraphQL error extensions:', error.extensions);
+      });
+      return [];
+    }
+
+    // Filter events by is_public and status, then transform to EventData
+    const events: EventData[] = [];
+    const currentTime = Date.now();
+    
+    if (result.data?.objects?.nodes) {
+      for (const node of result.data.objects.nodes) {
+        const contents = node.asMoveObject?.contents?.json;
+        if (contents) {
+          // Filter: is_public = true, status = 1 (active), and start_time in the future
+          const isPublic = contents.is_public === true || contents.is_public === 'true';
+          const status = Number(contents.status) === 1;
+          const startTime = Number(contents.start_time);
+          const isUpcoming = startTime > currentTime;
+          
+          if (isPublic && status && isUpcoming) {
+            // Use address from node (GraphQL returns address instead of id)
+            const eventId = node.address || contents.id || '';
+            
+            // Remove id from contents if it exists to prevent override
+            const { id: _, ...fieldsWithoutId } = contents;
+            
+            events.push({
+              ...fieldsWithoutId,
+              id: eventId,
+            } as EventData);
+          }
+        }
+      }
+    }
+
+    // Sort by start_time (ascending - earliest first)
+    events.sort((a, b) => Number(a.start_time) - Number(b.start_time));
+
+    return events;
+  } catch (error) {
+    console.error('Error querying public events:', error);
+    return [];
+  }
+}
+
+/**
  * Query all events organized by an address
  * Since events are shared objects, we use Sui GraphQL API to query by organizer field
  */
