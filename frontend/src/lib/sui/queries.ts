@@ -3,6 +3,7 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
+import { Transaction } from '@mysten/sui/transactions';
 import { PACKAGE_ID } from './contracts';
 
 export interface EventData {
@@ -45,18 +46,17 @@ export async function isAddressWhitelisted(
   address: string
 ): Promise<boolean> {
   try {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${PACKAGE_ID}::event::is_whitelisted_public`,
+      arguments: [tx.pure.id(eventId), tx.pure.address(address)],
+    });
+
+    const txBytes = await tx.build({ client, onlyTransactionKind: true });
+    
     const result = await client.devInspectTransactionBlock({
       sender: address,
-      transactionBlock: {
-        kind: 'moveCall',
-        data: {
-          packageId: PACKAGE_ID,
-          module: 'event',
-          function: 'is_whitelisted_public',
-          arguments: [eventId, address],
-          typeArguments: [],
-        },
-      },
+      transactionBlock: txBytes,
     });
 
     if (result.results && result.results[0]) {
@@ -213,26 +213,142 @@ export async function queryOwnedTickets(
 
 /**
  * Query all events organized by an address
- * Note: Events are now shared objects, so we need to query by organizer field
- * This requires an indexer or GraphQL query in production.
- * For now, this is a placeholder that would need indexer support.
+ * Since events are shared objects, we use Sui GraphQL API to query by organizer field
  */
 export async function queryOwnedEvents(
   client: SuiClient,
   organizer: string
 ): Promise<EventData[]> {
   try {
-    // Since events are shared objects, we can't use getOwnedObjects
-    // In production, use an indexer service to query by organizer field
-    // For now, return empty array - this needs to be implemented with indexer
-    console.warn('queryOwnedEvents: Events are shared objects. Use indexer to query by organizer field.');
+    // Get GraphQL endpoint from environment or derive from RPC URL
+    const graphqlEndpoint = getGraphQLEndpoint(client);
     
-    // TODO: Implement with indexer API
-    // Example: GET /api/events?organizer=${organizer}
-    return [];
+    if (!graphqlEndpoint) {
+      console.warn('GraphQL endpoint not available. Cannot query shared events by organizer.');
+      return [];
+    }
+
+    // GraphQL query to get all Event objects (shared objects)
+    // Note: Sui GraphQL API doesn't support field-based filtering,
+    // so we fetch all events and filter by organizer client-side
+    // Try without owner filter first, as shared objects might not need it
+    const query = `
+      query ($packageId: String!) {
+        objects(
+          filter: {
+            type: $packageId
+          }
+          first: 50
+        ) {
+          nodes {
+            address
+            asMoveObject {
+              contents {
+                json
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      packageId: `${PACKAGE_ID}::event::Event`,
+    };
+
+    const response = await fetch(graphqlEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`GraphQL query failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (result.errors) {
+      console.error('GraphQL errors:', result.errors);
+      // Log detailed error information
+      result.errors.forEach((error: any) => {
+        console.error('GraphQL error message:', error.message);
+        console.error('GraphQL error locations:', error.locations);
+        console.error('GraphQL error extensions:', error.extensions);
+      });
+      return [];
+    }
+
+    // Filter events by organizer and transform to EventData
+    const events: EventData[] = [];
+    
+    if (result.data?.objects?.nodes) {
+      for (const node of result.data.objects.nodes) {
+        const contents = node.asMoveObject?.contents?.json;
+        if (contents && contents.organizer === organizer) {
+          // Ensure id is always a string
+          const eventId = typeof node.id === 'string' ? node.id : String(node.id || '');
+          
+          // Remove id from contents if it exists to prevent override
+          const { id: _, ...fieldsWithoutId } = contents;
+          
+          events.push({
+            ...fieldsWithoutId,
+            id: eventId,
+          } as EventData);
+        }
+      }
+    }
+
+    return events;
   } catch (error) {
     console.error('Error querying events by organizer:', error);
+    // Fallback: return empty array instead of throwing
     return [];
   }
+}
+
+/**
+ * Get GraphQL endpoint from SuiClient RPC URL
+ * Derives GraphQL endpoint from the RPC endpoint
+ * 
+ * Sui GraphQL API endpoints:
+ * - Testnet: https://sui-testnet.mystenlabs.com/graphql
+ * - Mainnet: https://sui-mainnet.mystenlabs.com/graphql
+ * - Devnet: https://sui-devnet.mystenlabs.com/graphql
+ */
+function getGraphQLEndpoint(client: SuiClient): string | null {
+  // Try to get from environment variable first
+  const envEndpoint = import.meta.env.VITE_SUI_GRAPHQL_ENDPOINT;
+  if (envEndpoint) {
+    return envEndpoint;
+  }
+
+  // Try to derive from client's RPC URL
+  // Access the internal connection URL if available
+  const clientUrl = (client as any).connection?.fullnode || 
+                   (client as any).url || 
+                   (client as any).rpcUrl;
+console.log('client', client);
+                   console.log('clientUrl', clientUrl);
+  
+  if (typeof clientUrl === 'string') {
+    if (clientUrl.includes('testnet')) {
+      return 'https://graphql.testnet.sui.io/graphql';
+    } else if (clientUrl.includes('mainnet')) {
+      return 'https://graphql.mainnet.sui.io/graphql';
+    } else if (clientUrl.includes('devnet')) {
+      return 'https://graphql.devnet.sui.io/graphql';
+    }
+  }
+
+  // Default to testnet if we can't determine
+  // This can be overridden via VITE_SUI_GRAPHQL_ENDPOINT environment variable
+  return 'https://graphql.testnet.sui.io/graphql';
 }
 
