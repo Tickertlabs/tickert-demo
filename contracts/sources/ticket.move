@@ -40,9 +40,11 @@ public struct Ticket has key, store {
 
 /// Mints a new ticket NFT for an event
 /// Validates the event is active and has capacity, then transfers the ticket to the caller
+/// If event has private location, adds ticket holder to whitelist
+/// Event must be a shared object to allow public ticket minting
 #[allow(lint(self_transfer))]
 public fun mint_ticket(
-    event: &mut Event, // Event to mint ticket for
+    event: &mut Event, // Shared Event to mint ticket for
     encrypted_metadata_url: vector<u8>, // URL to encrypted ticket metadata on Walrus
     clock: &Clock, // Clock object for timestamp
     ctx: &mut TxContext, // Transaction context
@@ -52,20 +54,26 @@ public fun mint_ticket(
     assert!(event::sold(event) < event::capacity(event), EEventFull);
 
     let mint_time = clock::timestamp_ms(clock);
+    let ticket_holder = ctx.sender();
 
     // Increment sold count
     event::increment_sold(event);
 
+    // If event has private location, add ticket holder to whitelist
+    if (event::location_private(event)) {
+        event::add_to_whitelist(event, ticket_holder);
+    };
+
     let ticket = Ticket {
         id: object::new(ctx),
         event_id: object::id(event),
-        holder: ctx.sender(),
+        holder: ticket_holder,
         mint_time,
         status: TICKET_STATUS_VALID,
         encrypted_metadata_url: encrypted_metadata_url.to_string(),
     };
 
-    transfer::public_transfer(ticket, ctx.sender());
+    transfer::public_transfer(ticket, ticket_holder);
 }
 
 /// Marks a ticket as used
@@ -114,6 +122,18 @@ public fun is_valid(ticket: &Ticket): bool {
 /// Returns the encrypted metadata URL
 public fun encrypted_metadata_url(ticket: &Ticket): String {
     ticket.encrypted_metadata_url
+}
+
+/// Seal approve function for ticket metadata decryption
+/// This function is called by Seal SDK to approve decryption requests
+/// The id parameter is the encryption ID used to encrypt the ticket metadata
+public fun seal_approve(
+    _id: vector<u8>, // Encryption ID (address + nonce)
+    _ticket: &Ticket, // Ticket object (for context, not modified)
+) {
+    // This function exists to allow Seal SDK to build transaction bytes
+    // The actual approval logic is handled by Seal servers
+    // No validation needed here as Seal handles the security
 }
 
 // === Test Functions ===

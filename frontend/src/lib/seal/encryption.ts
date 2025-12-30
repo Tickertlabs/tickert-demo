@@ -94,6 +94,7 @@ export async function decryptLocationData(
   
   if (objectId) {
     // If object ID is provided, use it in seal_approve
+    // seal_approve now requires ctx parameter for whitelist checking
     const idArray = fromHex(id);
     tx.moveCall({
       target: `${PACKAGE_ID}::event::seal_approve`,

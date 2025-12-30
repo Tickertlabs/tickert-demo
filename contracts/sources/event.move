@@ -4,6 +4,7 @@ module tickert::event;
 
 use std::string::String;
 use sui::clock::{Self, Clock};
+use sui::table::{Self, Table};
 
 // === Constants ===
 
@@ -18,6 +19,7 @@ const EInvalidTime: u64 = 1;
 const EPastStartTime: u64 = 2;
 const ENotOrganizer: u64 = 3;
 const EInvalidStatus: u64 = 4;
+const ENotWhitelisted: u64 = 5;
 
 // === Structs ===
 
@@ -60,12 +62,14 @@ public struct Event has key, store {
     requires_approval: bool,
     // Whether the event is publicly listed
     is_public: bool,
+    // Whitelist of addresses allowed to decrypt private location (only used if location_private is true)
+    whitelist: Table<address, bool>,
 }
 
 // === Public Functions ===
 
-/// Creates a new event and transfers it to the organizer
-#[allow(lint(self_transfer))]
+/// Creates a new event and shares it so anyone can mint tickets
+/// Event is shared to allow public ticket minting by any user
 public fun create_event(
     metadata_url: vector<u8>, // URL to large metadata on Walrus (image and description only)
     title: vector<u8>, // Event title
@@ -118,15 +122,18 @@ public fun create_event(
         created_at: current_time,
         requires_approval,
         is_public,
+        whitelist: table::new(ctx),
     };
 
-    transfer::public_transfer(event, ctx.sender());
+    // Share the event object so anyone can mint tickets
+    transfer::share_object(event);
 }
 
 /// Updates the event metadata URL
 /// Only the organizer can update the metadata URL
+/// Event must be a shared object
 public fun update_metadata_url(
-    event: &mut Event, // Event to update
+    event: &mut Event, // Shared Event to update
     new_metadata_url: vector<u8>, // New metadata URL
     ctx: &mut TxContext, // Transaction context
 ) {
@@ -136,8 +143,9 @@ public fun update_metadata_url(
 
 /// Updates the event status
 /// Only the organizer can update the status
+/// Event must be a shared object
 public fun update_status(
-    event: &mut Event, // Event to update
+    event: &mut Event, // Shared Event to update
     new_status: u8, // New status (must be ACTIVE, CANCELLED, or COMPLETED)
     ctx: &mut TxContext, // Transaction context
 ) {
@@ -156,6 +164,39 @@ public fun update_status(
 public fun increment_sold(event: &mut Event) {
     assert!(event.sold < event.capacity, EInvalidCapacity);
     event.sold = event.sold + 1;
+}
+
+/// Adds an address to the whitelist
+/// Called when a ticket is minted to allow the ticket holder to decrypt private location
+public fun add_to_whitelist(
+    event: &mut Event, // Shared Event to update
+    address: address, // Address to add to whitelist
+) {
+    table::add(&mut event.whitelist, address, true);
+}
+
+/// Checks if an address is in the whitelist
+public fun is_whitelisted(event: &Event, address: address): bool {
+    table::contains(&event.whitelist, address)
+}
+
+/// Seal approve function for location decryption
+/// This function is called by Seal SDK to approve decryption requests
+/// Only whitelisted addresses can decrypt private location data
+/// The id parameter is the encryption ID used to encrypt the location data
+public fun seal_approve(
+    _id: vector<u8>, // Encryption ID (address + nonce)
+    event: &Event, // Event object (for context, not modified)
+    ctx: &TxContext, // Transaction context to get sender
+) {
+    // Check if location is private
+    if (event.location_private) {
+        // If location is private, verify that the caller is whitelisted
+        let sender = ctx.sender();
+        assert!(is_whitelisted(event, sender), ENotWhitelisted);
+    };
+    // If location is public or sender is whitelisted, allow decryption
+    // The actual decryption logic is handled by Seal SDK
 }
 
 // === View Functions ===
@@ -235,6 +276,11 @@ public fun location_encryption_key_id(event: &Event): String {
     event.location_encryption_key_id
 }
 
+/// Returns whether an address is whitelisted
+public fun is_whitelisted_public(event: &Event, address: address): bool {
+    is_whitelisted(event, address)
+}
+
 // === Test Functions ===
 
 #[test_only]
@@ -277,5 +323,6 @@ public fun create_test_event(
         created_at: 0,
         requires_approval,
         is_public,
+        whitelist: table::new(ctx),
     }
 }

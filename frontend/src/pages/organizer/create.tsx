@@ -51,7 +51,7 @@ export function CreateEventPage() {
       // 2. Handle location encryption if private
       const startTime = new Date(data.startTime);
       const endTime = new Date(data.endTime);
-      
+
       let locationEncryptionKeyId: string = '';
       let encryptedLocationUrl: string = '';
       let publicLocationName: string;
@@ -70,10 +70,10 @@ export function CreateEventPage() {
 
         // Prepare location data for encryption
         const locationData = {
-          location: {
-            name: data.locationName,
-            address: data.locationAddress,
-          },
+        location: {
+          name: data.locationName,
+          address: data.locationAddress,
+        },
         };
 
         // Encrypt location data using Seal
@@ -85,7 +85,7 @@ export function CreateEventPage() {
         console.log('Location encrypted with Seal');
 
         // Upload encrypted location to Walrus
-        const encryptedLocationBlob = new Blob([encryptedLocationBytes], { type: 'application/octet-stream' });
+        const encryptedLocationBlob = new Blob([encryptedLocationBytes as any], { type: 'application/octet-stream' });
         encryptedLocationUrl = await uploadImageToWalrus(encryptedLocationBlob);
         console.log('Encrypted location uploaded to Walrus:', encryptedLocationUrl);
 
@@ -102,7 +102,7 @@ export function CreateEventPage() {
       console.log('Uploading large metadata to Walrus...');
       const walrusMetadata = {
         image: imageUrl,
-        description: data.description,
+          description: data.description,
       };
       const metadataUrl = await uploadEventMetadata(walrusMetadata);
       console.log('Large metadata uploaded to Walrus, URL:', metadataUrl);

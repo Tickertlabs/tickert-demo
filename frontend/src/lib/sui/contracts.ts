@@ -5,7 +5,7 @@
 
 import { SuiClient } from '@mysten/sui/client';
 
-export const PACKAGE_ID = import.meta.env.VITE_PACKAGE_ID || '0x5ab2bda9000f093f1485367a3461aea20fa310abffc057ae1224eae81dcb335b';
+export const PACKAGE_ID = import.meta.env.VITE_PACKAGE_ID || '0x2c0845b4856df7f47efd98c73e51ff1bdbb40f665c325379b2a5f854a64ef5c9';
 
 /**
  * Get event object from blockchain

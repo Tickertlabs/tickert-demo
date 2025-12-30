@@ -17,7 +17,6 @@ import {
 import { getSealClient, createSessionKey, getSessionKeyPersonalMessage, setSessionKeySignature } from '../../lib/seal/client';
 import { encryptTicketMetadata, decryptLocationData, generateEncryptionId } from '../../lib/seal/encryption';
 import { Event } from '../../types';
-import type { SessionKey } from '../../lib/seal/client';
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +24,7 @@ export function EventDetailPage() {
   const client = useSuiClient();
   const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
   const [event, setEvent] = useState<Event | null>(null);
   const [walrusMetadata, setWalrusMetadata] = useState<{ image?: string; description: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,26 +76,11 @@ export function EventDetailPage() {
           const personalMessage = await getSessionKeyPersonalMessage(sessionKey);
           
           // Sign personal message
-          await new Promise<void>((resolve, reject) => {
-            signPersonalMessage(
-              { message: personalMessage },
-              {
-                onSuccess: async ({ signature }) => {
-                  try {
-                    await setSessionKeySignature(sessionKey, signature);
-                    resolve();
-                  } catch (e) {
-                    reject(e);
-                  }
-                },
-                onError: (error) => {
-                  console.error('Error signing session key:', error);
-                  reject(error);
-                },
-              }
-            );
+          const result = await signPersonalMessage({
+            message: personalMessage,
           });
-          
+          await setSessionKeySignature(sessionKey, result.signature);
+
           // Fetch encrypted location from Walrus
           const walrusClient = getWalrusClient();
           const encryptedLocationBlob = await walrusClient.getBlob(event.encrypted_location_url);
@@ -152,7 +137,7 @@ export function EventDetailPage() {
 
       // 5. Upload encrypted metadata to Walrus
       const walrusClient = getWalrusClient();
-      const encryptedMetadataBlob = new Blob([encryptedMetadataBytes], { type: 'application/octet-stream' });
+        const encryptedMetadataBlob = new Blob([encryptedMetadataBytes as any], { type: 'application/octet-stream' });
       const encryptedMetadataBlobId = await walrusClient.uploadBlob(encryptedMetadataBlob);
       const encryptedMetadataUrl = encryptedMetadataBlobId;
 
@@ -259,9 +244,9 @@ export function EventDetailPage() {
                 Private - Location will be revealed after ticket purchase
               </Text>
             ) : (
-              <Text ml="2">
+            <Text ml="2">
                 {event.location_name} - {event.location_address}
-              </Text>
+            </Text>
             )}
           </Box>
 

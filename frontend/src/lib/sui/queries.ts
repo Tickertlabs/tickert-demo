@@ -37,6 +37,44 @@ export interface TicketData {
 }
 
 /**
+ * Check if an address is whitelisted for an event
+ */
+export async function isAddressWhitelisted(
+  client: SuiClient,
+  eventId: string,
+  address: string
+): Promise<boolean> {
+  try {
+    const result = await client.devInspectTransactionBlock({
+      sender: address,
+      transactionBlock: {
+        kind: 'moveCall',
+        data: {
+          packageId: PACKAGE_ID,
+          module: 'event',
+          function: 'is_whitelisted_public',
+          arguments: [eventId, address],
+          typeArguments: [],
+        },
+      },
+    });
+
+    if (result.results && result.results[0]) {
+      const returnValue = result.results[0].returnValues;
+      if (returnValue && returnValue[0]) {
+        const value = returnValue[0][1];
+        // Decode the boolean value
+        return value === '01' || value === '1';
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking whitelist:', error);
+    return false;
+  }
+}
+
+/**
  * Query event by ID
  */
 export async function queryEvent(
@@ -174,57 +212,26 @@ export async function queryOwnedTickets(
 }
 
 /**
- * Query all events owned by an address (organizer's events)
+ * Query all events organized by an address
+ * Note: Events are now shared objects, so we need to query by organizer field
+ * This requires an indexer or GraphQL query in production.
+ * For now, this is a placeholder that would need indexer support.
  */
 export async function queryOwnedEvents(
   client: SuiClient,
-  owner: string
+  organizer: string
 ): Promise<EventData[]> {
   try {
-    const objects = await client.getOwnedObjects({
-      owner,
-      filter: {
-        StructType: `${PACKAGE_ID}::event::Event`,
-      },
-      options: {
-        showContent: true,
-        showType: true,
-      },
-    });
-
-    return objects.data
-      .map((obj) => {
-        if (
-          obj.data?.content &&
-          'fields' in obj.data.content &&
-          obj.data.content.type === `${PACKAGE_ID}::event::Event`
-        ) {
-          const fields = obj.data.content.fields as any;
-          // Ensure id is always a string
-          // obj.data.objectId should be a string, but handle edge cases
-          let eventId: string;
-          if (typeof obj.data.objectId === 'string') {
-            eventId = obj.data.objectId;
-          } else if (obj.data.objectId && typeof obj.data.objectId === 'object') {
-            // Handle case where objectId might be an object
-            eventId = String((obj.data.objectId as any).id || (obj.data.objectId as any).objectId || obj.data.objectId);
-          } else {
-            eventId = String(obj.data.objectId || '');
-          }
-          
-          // Remove id from fields if it exists to prevent override
-          const { id: _, ...fieldsWithoutId } = fields;
-          
-          return {
-            ...fieldsWithoutId,
-            id: eventId, // Always use objectId as string
-          } as EventData;
-        }
-        return null;
-      })
-      .filter((event): event is EventData => event !== null);
+    // Since events are shared objects, we can't use getOwnedObjects
+    // In production, use an indexer service to query by organizer field
+    // For now, return empty array - this needs to be implemented with indexer
+    console.warn('queryOwnedEvents: Events are shared objects. Use indexer to query by organizer field.');
+    
+    // TODO: Implement with indexer API
+    // Example: GET /api/events?organizer=${organizer}
+    return [];
   } catch (error) {
-    console.error('Error querying owned events:', error);
+    console.error('Error querying events by organizer:', error);
     return [];
   }
 }
