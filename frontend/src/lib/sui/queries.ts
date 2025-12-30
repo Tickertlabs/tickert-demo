@@ -291,8 +291,10 @@ export async function queryOwnedEvents(
       for (const node of result.data.objects.nodes) {
         const contents = node.asMoveObject?.contents?.json;
         if (contents && contents.organizer === organizer) {
-          // Ensure id is always a string
-          const eventId = typeof node.id === 'string' ? node.id : String(node.id || '');
+          // Use address from node (GraphQL returns address instead of id)
+          const eventId = typeof node.address === 'string' 
+            ? node.address 
+            : (contents.id || String(node.address || ''));
           
           // Remove id from contents if it exists to prevent override
           const { id: _, ...fieldsWithoutId } = contents;
@@ -334,8 +336,6 @@ function getGraphQLEndpoint(client: SuiClient): string | null {
   const clientUrl = (client as any).connection?.fullnode || 
                    (client as any).url || 
                    (client as any).rpcUrl;
-console.log('client', client);
-                   console.log('clientUrl', clientUrl);
   
   if (typeof clientUrl === 'string') {
     if (clientUrl.includes('testnet')) {

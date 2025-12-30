@@ -30,11 +30,6 @@ export function OrganizerEventsPage() {
 
       try {
         const ownedEvents = await queryOwnedEvents(client, currentAccount.address);
-        // Debug: log event structure
-        if (ownedEvents.length > 0) {
-          console.log('First event structure:', ownedEvents[0]);
-          console.log('First event.id type:', typeof ownedEvents[0].id, ownedEvents[0].id);
-        }
         setEvents(ownedEvents);
 
         // Load image from Walrus for each event (only image and description are stored there)
