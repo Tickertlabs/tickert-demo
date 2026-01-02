@@ -27,6 +27,17 @@ public struct Attendance has key, store {
     verified: bool,
 }
 
+// === Events ===
+
+/// Event emitted when an attendance NFT is minted
+public struct AttendanceMintedEvent has copy, drop, store {
+    attendance_id: ID,
+    event_id: ID,
+    attendee: address,
+    ticket_id: ID,
+    timestamp: u64,
+}
+
 // === Public Functions ===
 
 /// Mints an attendance NFT after verifying ticket ownership and validity
@@ -42,9 +53,10 @@ public fun mint_attendance(
     assert!(ticket::is_valid(ticket), ETicketNotValid);
 
     // Mark ticket as used
-    ticket::mark_as_used(ticket, ctx.sender());
+    ticket::mark_as_used(ticket, ctx.sender(), clock);
 
     let event_id = ticket::event_id(ticket);
+    let ticket_id = object::id(ticket);
     let timestamp = clock::timestamp_ms(clock);
 
     let attendance = Attendance {
@@ -55,8 +67,19 @@ public fun mint_attendance(
         verified: true,
     };
 
+    let attendance_id = object::id(&attendance);
+
     // Transfer to attendee (soulbound - cannot be transferred)
     transfer::public_transfer(attendance, ctx.sender());
+
+    // Emit attendance minted event
+    sui::event::emit(AttendanceMintedEvent {
+        attendance_id,
+        event_id,
+        attendee: ctx.sender(),
+        ticket_id,
+        timestamp,
+    });
 }
 
 // === View Functions ===

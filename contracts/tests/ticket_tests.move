@@ -3,6 +3,7 @@ module tickert::ticket_tests;
 
 use tickert::ticket::{Self, create_test_ticket};
 use tickert::event::create_test_event;
+use sui::clock;
 use sui::test_scenario;
 
 #[test]
@@ -63,7 +64,8 @@ fun test_mark_ticket_as_used() {
         );
 
         assert!(ticket::is_valid(&ticket));
-        ticket::mark_as_used(&mut ticket, attendee);
+        let clock = test_scenario::clock(&mut scenario);
+        ticket::mark_as_used(&mut ticket, attendee, &clock);
         assert!(ticket::status(&ticket) == 1); // TICKET_STATUS_USED = 1
         assert!(!ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
@@ -89,7 +91,8 @@ fun test_cancel_ticket() {
         );
 
         assert!(ticket::is_valid(&ticket));
-        ticket::cancel_ticket(&mut ticket, attendee);
+        let clock = test_scenario::clock(&mut scenario);
+        ticket::cancel_ticket(&mut ticket, attendee, &clock);
         assert!(ticket::status(&ticket) == 2); // TICKET_STATUS_CANCELLED = 2
         assert!(!ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
@@ -116,7 +119,8 @@ fun test_mark_as_used_wrong_owner() {
             test_scenario::ctx(&mut scenario)
         );
 
-        ticket::mark_as_used(&mut ticket, wrong_owner);
+        let clock = test_scenario::clock(&mut scenario);
+        ticket::mark_as_used(&mut ticket, wrong_owner, &clock);
         transfer::public_transfer(ticket, attendee);
     };
 
@@ -140,8 +144,9 @@ fun test_mark_as_used_already_used() {
             test_scenario::ctx(&mut scenario)
         );
 
-        ticket::mark_as_used(&mut ticket, attendee);
-        ticket::mark_as_used(&mut ticket, attendee); // Should fail
+        let clock = test_scenario::clock(&mut scenario);
+        ticket::mark_as_used(&mut ticket, attendee, &clock);
+        ticket::mark_as_used(&mut ticket, attendee, &clock); // Should fail
         transfer::public_transfer(ticket, attendee);
     };
 

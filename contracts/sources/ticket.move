@@ -36,6 +36,33 @@ public struct Ticket has key, store {
     encrypted_metadata_url: String,
 }
 
+// === Events ===
+
+/// Event emitted when a ticket is minted
+public struct TicketMintedEvent has copy, drop, store {
+    ticket_id: ID,
+    event_id: ID,
+    holder: address,
+    mint_time: u64,
+    price: u64,
+}
+
+/// Event emitted when a ticket is marked as used
+public struct TicketUsedEvent has copy, drop, store {
+    ticket_id: ID,
+    event_id: ID,
+    holder: address,
+    used_at: u64,
+}
+
+/// Event emitted when a ticket is cancelled
+public struct TicketCancelledEvent has copy, drop, store {
+    ticket_id: ID,
+    event_id: ID,
+    holder: address,
+    cancelled_at: u64,
+}
+
 // === Public Functions ===
 
 /// Mints a new ticket NFT for an event
@@ -73,7 +100,19 @@ public fun mint_ticket(
         encrypted_metadata_url: encrypted_metadata_url.to_string(),
     };
 
+    let ticket_id = object::id(&ticket);
+    let event_id = object::id(event);
+
     transfer::public_transfer(ticket, ticket_holder);
+
+    // Emit ticket minted event
+    sui::event::emit(TicketMintedEvent {
+        ticket_id,
+        event_id,
+        holder: ticket_holder,
+        mint_time,
+        price: event::price(event),
+    });
 }
 
 /// Marks a ticket as used
@@ -81,10 +120,19 @@ public fun mint_ticket(
 public fun mark_as_used(
     ticket: &mut Ticket, // Ticket to mark as used
     holder: address, // Address of the ticket holder
+    clock: &Clock, // Clock object for timestamp
 ) {
     assert!(holder == ticket.holder, ENotTicketOwner);
     assert!(ticket.status == TICKET_STATUS_VALID, ETicketAlreadyUsed);
     ticket.status = TICKET_STATUS_USED;
+    
+    // Emit ticket used event
+    sui::event::emit(TicketUsedEvent {
+        ticket_id: object::id(ticket),
+        event_id: ticket.event_id,
+        holder,
+        used_at: clock::timestamp_ms(clock),
+    });
 }
 
 /// Cancels a ticket
@@ -92,9 +140,18 @@ public fun mark_as_used(
 public fun cancel_ticket(
     ticket: &mut Ticket, // Ticket to cancel
     holder: address, // Address of the ticket holder
+    clock: &Clock, // Clock object for timestamp
 ) {
     assert!(holder == ticket.holder, ENotTicketOwner);
     ticket.status = TICKET_STATUS_CANCELLED;
+    
+    // Emit ticket cancelled event
+    sui::event::emit(TicketCancelledEvent {
+        ticket_id: object::id(ticket),
+        event_id: ticket.event_id,
+        holder,
+        cancelled_at: clock::timestamp_ms(clock),
+    });
 }
 
 // === View Functions ===

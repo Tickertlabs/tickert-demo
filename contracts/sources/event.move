@@ -66,6 +66,51 @@ public struct Event has key, store {
     whitelist: Table<address, bool>,
 }
 
+// === Events ===
+
+/// Event emitted when a new event is created
+public struct EventCreatedEvent has copy, drop, store {
+    event_id: ID,
+    organizer: address,
+    title: String,
+    category: String,
+    capacity: u64,
+    price: u64,
+    start_time: u64,
+    end_time: u64,
+    created_at: u64,
+}
+
+/// Event emitted when event metadata URL is updated
+public struct EventMetadataUpdatedEvent has copy, drop, store {
+    event_id: ID,
+    organizer: address,
+    new_metadata_url: String,
+    updated_at: u64,
+}
+
+/// Event emitted when event status is updated
+public struct EventStatusUpdatedEvent has copy, drop, store {
+    event_id: ID,
+    organizer: address,
+    old_status: u8,
+    new_status: u8,
+    updated_at: u64,
+}
+
+/// Event emitted when a ticket is sold (sold count incremented)
+public struct TicketSoldEvent has copy, drop, store {
+    event_id: ID,
+    sold_count: u64,
+    capacity: u64,
+}
+
+/// Event emitted when an address is added to the whitelist
+public struct WhitelistAddedEvent has copy, drop, store {
+    event_id: ID,
+    address: address,
+}
+
 // === Public Functions ===
 
 /// Creates a new event and shares it so anyone can mint tickets
@@ -125,8 +170,23 @@ public fun create_event(
         whitelist: table::new(ctx),
     };
 
+    let event_id = object::id(&event);
+
     // Share the event object so anyone can mint tickets
     transfer::share_object(event);
+
+    // Emit event creation event
+    sui::event::emit(EventCreatedEvent {
+        event_id,
+        organizer: ctx.sender(),
+        title: title_string,
+        category: category_string,
+        capacity,
+        price,
+        start_time,
+        end_time,
+        created_at: current_time,
+    });
 }
 
 /// Updates the event metadata URL
@@ -135,10 +195,20 @@ public fun create_event(
 public fun update_metadata_url(
     event: &mut Event, // Shared Event to update
     new_metadata_url: vector<u8>, // New metadata URL
+    clock: &Clock, // Clock object for timestamp
     ctx: &mut TxContext, // Transaction context
 ) {
     assert!(ctx.sender() == event.organizer, ENotOrganizer);
-    event.metadata_url = new_metadata_url.to_string();
+    let new_url = new_metadata_url.to_string();
+    event.metadata_url = new_url;
+    
+    // Emit metadata update event
+    sui::event::emit(EventMetadataUpdatedEvent {
+        event_id: object::id(event),
+        organizer: event.organizer,
+        new_metadata_url: new_url,
+        updated_at: clock::timestamp_ms(clock),
+    });
 }
 
 /// Updates the event status
@@ -147,6 +217,7 @@ public fun update_metadata_url(
 public fun update_status(
     event: &mut Event, // Shared Event to update
     new_status: u8, // New status (must be ACTIVE, CANCELLED, or COMPLETED)
+    clock: &Clock, // Clock object for timestamp
     ctx: &mut TxContext, // Transaction context
 ) {
     assert!(ctx.sender() == event.organizer, ENotOrganizer);
@@ -156,7 +227,17 @@ public fun update_status(
             new_status == STATUS_COMPLETED,
         EInvalidStatus,
     );
+    let old_status = event.status;
     event.status = new_status;
+    
+    // Emit status update event
+    sui::event::emit(EventStatusUpdatedEvent {
+        event_id: object::id(event),
+        organizer: event.organizer,
+        old_status,
+        new_status,
+        updated_at: clock::timestamp_ms(clock),
+    });
 }
 
 /// Increments the sold ticket count
@@ -164,6 +245,13 @@ public fun update_status(
 public fun increment_sold(event: &mut Event) {
     assert!(event.sold < event.capacity, EInvalidCapacity);
     event.sold = event.sold + 1;
+    
+    // Emit ticket sold event
+    sui::event::emit(TicketSoldEvent {
+        event_id: object::id(event),
+        sold_count: event.sold,
+        capacity: event.capacity,
+    });
 }
 
 /// Adds an address to the whitelist
@@ -173,6 +261,12 @@ public fun add_to_whitelist(
     address: address, // Address to add to whitelist
 ) {
     table::add(&mut event.whitelist, address, true);
+    
+    // Emit whitelist added event
+    sui::event::emit(WhitelistAddedEvent {
+        event_id: object::id(event),
+        address,
+    });
 }
 
 /// Checks if an address is in the whitelist

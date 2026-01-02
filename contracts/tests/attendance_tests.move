@@ -3,6 +3,7 @@ module tickert::attendance_tests;
 
 use tickert::attendance::{Self, create_test_attendance};
 use tickert::ticket::{Self, create_test_ticket};
+use sui::clock;
 use sui::test_scenario;
 
 #[test]
@@ -59,7 +60,8 @@ fun test_attendance_after_ticket_used() {
         );
 
         // Mark ticket as used first
-        ticket::mark_as_used(&mut ticket, attendee);
+        let clock = test_scenario::clock(&mut scenario);
+        ticket::mark_as_used(&mut ticket, attendee, &clock);
         assert!(!ticket::is_valid(&ticket));
         transfer::public_transfer(ticket, attendee);
         
