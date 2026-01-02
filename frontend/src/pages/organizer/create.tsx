@@ -13,6 +13,7 @@ import { encryptLocationData, generateEncryptionId } from '../../lib/seal/encryp
 import {
   buildCreateEventTransaction,
   getClockObjectId,
+  parseEventIdFromTransaction,
 } from '../../lib/sui/transactions';
 export function CreateEventPage() {
   const navigate = useNavigate();
@@ -135,10 +136,54 @@ export function CreateEventPage() {
           transaction: txb,
         },
         {
-          onSuccess: (result) => {
-            console.log('Event created:', result);
-            navigate('/organizer/events');
-            setIsLoading(false);
+          onSuccess: async ({ digest }) => {
+            console.log('Transaction submitted:', digest);
+            
+            try {
+              // Wait for transaction to be confirmed
+              const transactionResult = await suiClient.waitForTransaction({
+                digest,
+                options: {
+                  showEffects: true,
+                  showEvents: true,
+                  showObjectChanges: true,
+                },
+              });
+
+              console.log('Transaction confirmed:', transactionResult);
+
+              // Try to parse event ID from transaction result
+              let eventId = parseEventIdFromTransaction(transactionResult);
+
+              // If not found in events, try to find from created objects
+              if (!eventId && transactionResult.objectChanges) {
+                const PACKAGE_ID = import.meta.env.VITE_PACKAGE_ID;
+                const eventObject = transactionResult.objectChanges.find(
+                  (change: any) => 
+                    change.type === 'created' && 
+                    change.objectType === `${PACKAGE_ID}::event::Event`
+                );
+                if (eventObject && 'objectId' in eventObject) {
+                  eventId = eventObject.objectId;
+                }
+              }
+
+              if (eventId) {
+                // Navigate to the created event page
+                console.log('Event created with ID:', eventId);
+                navigate(`/organizer/events/${eventId}`);
+              } else {
+                // Fallback: navigate to events list
+                console.warn('Could not parse event ID, navigating to events list');
+                navigate('/organizer/events');
+              }
+            } catch (error) {
+              console.error('Error waiting for transaction:', error);
+              // Still navigate to events list even if we can't parse the event ID
+              navigate('/organizer/events');
+            } finally {
+              setIsLoading(false);
+            }
           },
           onError: (error) => {
             console.error('Error creating event:', error);
