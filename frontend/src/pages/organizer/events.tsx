@@ -74,7 +74,11 @@ export function OrganizerEventsPage() {
           Create Event
         </Button>
       </Box>
-      <EventList events={events} imageMap={imageMap} />
+      <EventList 
+        events={events} 
+        imageMap={imageMap}
+        linkPath={(eventId) => `/organizer/events/${eventId}`}
+      />
     </Container>
   );
 }

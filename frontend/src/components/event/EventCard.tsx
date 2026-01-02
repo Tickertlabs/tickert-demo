@@ -10,9 +10,10 @@ import { getImageUrl } from '../../lib/walrus/storage';
 interface EventCardProps {
   event: Event;
   imageUrl?: string; // Optional image URL from Walrus
+  linkPath?: string; // Optional custom link path (defaults to /events/${eventId})
 }
 
-export function EventCard({ event, imageUrl: propImageUrl }: EventCardProps) {
+export function EventCard({ event, imageUrl: propImageUrl, linkPath }: EventCardProps) {
   const startDate = new Date(Number(event.start_time));
   const sold = Number(event.sold);
   const capacity = Number(event.capacity);
@@ -38,11 +39,14 @@ export function EventCard({ event, imageUrl: propImageUrl }: EventCardProps) {
   }
 
   const imageUrl = propImageUrl ? getImageUrl(propImageUrl) : undefined;
+  
+  // Use custom link path if provided, otherwise default to /events/${eventId}
+  const eventLink = linkPath || `/events/${eventId}`;
 
   return (
     <Card>
       <Link
-        to={`/events/${eventId}`}
+        to={eventLink}
         style={{ textDecoration: 'none', color: 'inherit' }}
       >
         {imageUrl && (
