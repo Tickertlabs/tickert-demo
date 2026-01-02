@@ -29,15 +29,15 @@ import {
   CrossCircledIcon
 } from '@radix-ui/react-icons';
 import { queryEvent } from '../../../lib/sui/queries.js';
-import { getEventMetadata, getImageUrl } from '../../../lib/walrus/storage.js';
-import { Event, EventMetadata } from '../../../types/index.js';
+import { getEventMetadata, getImageUrl, WalrusMetadata } from '../../../lib/walrus/storage.js';
+import { Event } from '../../../types/index.js';
 
 export function OrganizerEventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const client = useSuiClient();
   const [event, setEvent] = useState<Event | null>(null);
-  const [metadata, setMetadata] = useState<EventMetadata | null>(null);
+  const [metadata, setMetadata] = useState<WalrusMetadata | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export function OrganizerEventDetailPage() {
                 <Flex justify="between" align="start">
                   <Box>
                     <Heading size="8" mb="2">
-                      {metadata.title || event.title}
+                      {event.title}
                     </Heading>
                     <Flex gap="2" align="center" mb="3">
                       {getStatusBadge()}
