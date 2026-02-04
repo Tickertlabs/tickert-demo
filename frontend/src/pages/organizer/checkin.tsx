@@ -11,14 +11,29 @@ import {
   buildMarkAttendanceTransaction,
   getClockObjectId,
 } from '../../lib/sui/transactions';
+import { useRequireVerification } from '../../hooks/useRequireVerification';
 
 export function CheckInPage() {
   const client = useSuiClient();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const { requireVerification, isConnected } = useRequireVerification();
   const [verifying, setVerifying] = useState(false);
   const [lastVerified, setLastVerified] = useState<string | null>(null);
 
   const handleScan = async (ticketId: string) => {
+    // Require wallet verification before checking in
+    if (!isConnected) {
+      alert('Please connect your wallet');
+      return;
+    }
+
+    try {
+      await requireVerification();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Wallet verification required');
+      return;
+    }
+
     setVerifying(true);
     try {
       // 1. Verify ticket exists and is valid

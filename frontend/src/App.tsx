@@ -14,8 +14,11 @@ import { CreateEventPage } from './pages/organizer/create';
 import { CheckInPage } from './pages/organizer/checkin';
 import { TicketsPage } from './pages/tickets/index';
 import { TicketDetailPage } from './pages/tickets/[id]';
+import { useWalletConnection } from './hooks/useWalletConnection';
 
 function App() {
+  useWalletConnection();
+
   return (
     <BrowserRouter>
       <Box style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

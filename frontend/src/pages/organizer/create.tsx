@@ -15,18 +15,29 @@ import {
   getClockObjectId,
   parseEventIdFromTransaction,
 } from '../../lib/sui/transactions';
+import { useRequireVerification } from '../../hooks/useRequireVerification';
+
 export function CreateEventPage() {
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const { requireVerification, isConnected } = useRequireVerification();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (data: any) => {
     console.log('handleSubmit called with data:', data);
     
-    if (!currentAccount) {
+    if (!currentAccount || !isConnected) {
       alert('Please connect your wallet');
+      return;
+    }
+
+    // Require wallet verification before creating event
+    try {
+      await requireVerification();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Wallet verification required');
       return;
     }
 

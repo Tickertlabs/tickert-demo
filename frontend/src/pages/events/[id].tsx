@@ -17,6 +17,7 @@ import {
 import { getSealClient, createSessionKey, getSessionKeyPersonalMessage, setSessionKeySignature } from '../../lib/seal/client';
 import { encryptTicketMetadata, decryptLocationData, generateEncryptionId } from '../../lib/seal/encryption';
 import { Event } from '../../types';
+import { useRequireVerification } from '../../hooks/useRequireVerification';
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,7 @@ export function EventDetailPage() {
   const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
+  const { requireVerification, isConnected } = useRequireVerification();
   const [event, setEvent] = useState<Event | null>(null);
   const [walrusMetadata, setWalrusMetadata] = useState<{ image?: string; description: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,8 +55,16 @@ export function EventDetailPage() {
   }, [id, client]);
 
   const handleRegister = async () => {
-    if (!event || !id || !currentAccount) {
+    if (!event || !id || !currentAccount || !isConnected) {
       alert('Please connect your wallet');
+      return;
+    }
+
+    // Require wallet verification before registering
+    try {
+      await requireVerification();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Wallet verification required');
       return;
     }
 
